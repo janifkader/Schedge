@@ -151,7 +151,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
                 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-zinc-600 font-medium">
-                    {new Date(event.start_time).toLocaleDateString()}, {formatTime(event.start_time)} to {new Date(event.end_time).toLocaleDateString()}, {formatTime(event.end_time)} 
+                    {new Date(event.start_time).toLocaleDateString()}, {formatTime(event.start_time)} to {new Date(event.end_time).toLocaleDateString()}, {formatTime(event.end_time)}
                   </span>
                 </div>
               </li>

@@ -81,4 +81,3 @@ export default function Calendars({ params }: { params: { id?: string[] } }) {
     );
   }
 }
- ``

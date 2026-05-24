@@ -26,6 +26,7 @@ async function send(
     json = await res.json();
   } catch {}
 
+  // Keep your local conflict handling logic
   if (res.status === 409) {
     throw { conflicts: json.conflicts, message: json.error };
   }
@@ -46,7 +47,6 @@ async function send(
     } catch (e) {
       console.error("Refresh failed", e);
     }
-
     // window.location.href = "/";
   }
 
@@ -81,25 +81,32 @@ export function signout() {
 }
 
 export function createCalendar() {
-  return send ("POST", `/api/schedule/`);
+  return send("POST", `/api/schedule/`);
 }
 
 export function getCalendar(team_id?: string) {
   if (team_id) {
-    return send ("GET", `/api/schedule/${team_id}/`);
+    return send("GET", `/api/schedule/${team_id}/`);
   }
-  return send ("GET", `/api/schedule/`);
+  return send("GET", `/api/schedule/`);
 }
 
-export function createEvent(event_id: string, event: NewEvent) {
-  return send ("POST", `/api/event/${sched_id}/`, event);
+// Fixed function argument signature mismatch to cleanly accept sched_id
+export function createEvent(sched_id: string, event: NewEvent) {
+  return send("POST", `/api/event/${sched_id}/`, event);
 }
 
 export function createRequest(event_id: string, receiver: NewEvent, last_updated: Dayjs) {
-  return send ("POST", `/api/request/`, { event_id, receiver, last_updated });
+  return send("POST", `/api/request/`, { event_id, receiver, last_updated });
 }
 
-export function getEvents(schedule: number, date?: Dayjs | null, page: number = 1, limit: number = 1000, search?: string) {
+export function getEvents(
+  schedule: number, 
+  date?: Dayjs | null, 
+  page: number = 1, 
+  limit: number = 1000, 
+  search?: string
+) {
   const params = new URLSearchParams();
 
   if (date) {
@@ -113,6 +120,7 @@ export function getEvents(schedule: number, date?: Dayjs | null, page: number = 
   params.append('page', page.toString());
   params.append('limit', limit.toString());
 
+  // Keeps your newly fixed local timezone payload additions active!
   const offset = new Date().getTimezoneOffset();
   params.append('timezone', offset.toString());
 
@@ -219,7 +227,7 @@ export function getRequests(page: number = 1, limit: number = 1000) {
   return send("GET", url);
 }
 
-export function getTeam(team_id) {
+export function getTeam(team_id: string) {
   return send("GET", `/api/team/${team_id}/`);
 }
 

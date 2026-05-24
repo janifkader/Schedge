@@ -1,7 +1,6 @@
 "use client";
 
 import { Stack, Button, Typography, TextField, Tooltip } from "@mui/material";
-
 import { styled } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -33,7 +32,6 @@ export default function Signin() {
   const confirmRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [verified, setVerified] = useState(true);
-
   const router = useRouter();
 
   const handleSubmit = async function (e: React.FormEvent<HTMLFormElement>) {
@@ -112,6 +110,7 @@ export default function Signin() {
               </Typography>
             </Tooltip> 
           )}
+          <Typography color="red">{errorMessage}</Typography>
         </Stack>
         <Stack spacing={2} sx={{ width: "100%", justifyContent: "center", alignItems: "center", textAlign: "center", }}>
           <TextField size="small" required label="Email" inputRef={emailRef} />

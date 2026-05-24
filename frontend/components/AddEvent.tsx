@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import NumberField from './NumberField'
+import NumberField from './NumberField';
 import {
   Dialog,
   DialogTitle,
@@ -53,6 +53,7 @@ export default function AddEventDialog({
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   };
+
   const [form, setForm] = useState<NewEvent>({
     title: "",
     start_time: toLocalISO(selectedDate),
@@ -65,7 +66,17 @@ export default function AddEventDialog({
   const [error, setError] = useState("");
 
   const handleChange = (field: keyof NewEvent) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+    const value = e.target.value;
+    setForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      // Contextual sync: Clear out span requirements if they toggle back to None
+      if (field === "cycle" && value === "None") {
+        updated.span = "None";
+      } else if (field === "cycle" && prev.span === "None") {
+        updated.span = ""; // Clear string placeholder so user can type cleanly
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async () => {
@@ -86,11 +97,10 @@ export default function AddEventDialog({
       await onSubmit(form);
       onClose();
     } 
-    catch (err) {
+    catch (err: any) {
       if (err.conflicts) {
         setError(`Conflicts with: ${err.conflicts.map((c: any) => `${c.title} (weight ${c.weight})`).join(", ")}`);
-      }
-      else{
+      } else {
         setError("Failed to create event. Please try again.");
       }
       console.log(err);
@@ -135,7 +145,14 @@ export default function AddEventDialog({
             slotProps={{ inputLabel: { shrink: true } }}
           />
 
-          <NumberField label="Weight" min={1} max={10} onChange={(val: number) => setForm((prev) => ({ ...prev, weight: val }))}/>
+          {/* Cleanly tracks weight through your custom NumberField component hooks */}
+          <NumberField 
+            label="Weight" 
+            min={1} 
+            max={10} 
+            value={form.weight}
+            onChange={(val: number) => setForm((prev) => ({ ...prev, weight: val }))}
+          />
 
           <TextField
             label="Cycle"
@@ -149,6 +166,7 @@ export default function AddEventDialog({
             ))}
           </TextField>
 
+          {/* Retained your flexible regex input tracking field logic */}
           <TextField
             label="Span"
             variant="outlined"
@@ -158,11 +176,11 @@ export default function AddEventDialog({
             value={form.span}
             onChange={handleChange("span")}
             placeholder="e.g., 2 Weeks, 6 Months, 1 Years"
-            error={!!error && !form.span.trim()}
+            error={!!error && form.cycle !== 'None' && !/^\d+\s(Weeks|Months|Years)$/.test(form.span)}
             helperText={
-              error 
-                ? "Must be a number followed by a space and 'Weeks', 'Months', or 'Years' (e.g., '3 Months')" 
-                : "Format: [Number] [Weeks/Months/Years]"
+              form.cycle === 'None'
+                ? "Select a cycle first"
+                : "Format: [Number] [Weeks/Months/Years] (e.g., '3 Months')"
             }
             inputProps={{
               pattern: "^\\d+\\s(Weeks|Months|Years)$",
@@ -170,8 +188,7 @@ export default function AddEventDialog({
             }}
           />
 
-
-          {error && form.title.trim() && (
+          {error && form.title.trim() && form.cycle === 'None' && (
             <p className="text-red-700 text-sm">{error}</p>
           )}
         </div>
