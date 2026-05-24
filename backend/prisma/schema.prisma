@@ -13,7 +13,7 @@ model User {
   email          String   @id @unique
   name           String
   password       String
-  phone          String?  // Made optional. Best practice so signup doesn't block if they skip it.
+  phone          String  // Made optional. Best practice so signup doesn't block if they skip it.
   refresh_token  String?  @unique // Optional, as it won't exist until they log in.
   is_verified        Boolean   @default(false)
   verification_token String?   @unique
@@ -82,6 +82,7 @@ model Event {
   cycle          String
   span           DateTime
   schedule_id    String
+  reminded       Boolean  @default(false)
   recurrence_id  String?
 
   participants   Participates[]

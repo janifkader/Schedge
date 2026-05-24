@@ -64,11 +64,13 @@ export function signup(
   name: string,
   email: string,
   password: string,
+  phone: string,
 ) {
   return send("POST", "/api/signup/", {
     name,
     email,
     password,
+    phone,
   });
 }
 

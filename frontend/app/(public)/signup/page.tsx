@@ -42,12 +42,13 @@ export default function Register() {
 
       const name = nameRef.current?.value?.trim() || "";
       const email = emailRef.current?.value?.trim() || "";
-      const phone = phoneRef.current?.value?.trim() || "";
+      const phone = phoneRef ? `+1${phoneRef}` : "";
+      console.log(phone);
       const pass = passRef.current?.value || "";
       const confirm = confirmRef.current?.value || "";
 
       if (pass !== confirm) throw new Error("Passwords don't match.");
-      await signup(name, email, pass);
+      await signup(name, email, pass, phone);
       router.push("/calendars");
     } catch (err: any) {
       console.log(err);
