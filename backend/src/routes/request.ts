@@ -18,6 +18,7 @@ const router = express.Router();
 // POST /api/request/
 router.post(
   "/",
+  isAuthenticated as any,
   handleValidationErrors,
   async (req: Request, res: Response) => {
     try {
@@ -26,6 +27,7 @@ router.post(
       const userEmail = authReq.user?.email;
 
       if (!userEmail || !event_id || !receiver || !last_updated){
+        console.log(`emaiL: ${userEmail}, id: ${event_id}, rec: ${receiver}, updt: ${last_updated}`);
         return res.status(401).json({ error: "Missing information." });
       }
 
@@ -62,6 +64,7 @@ router.post(
 // patch /api/request/:id/
 router.patch(
   "/:id/",
+  isAuthenticated as any,
   handleValidationErrors,
   async (req: Request, res: Response) => {
     try {
@@ -70,7 +73,8 @@ router.patch(
       const { status, last_updated } = req.body;
       const userEmail = authReq.user?.email;
 
-      if (!userEmail || !status || !last_updated){
+      if (!userEmail || !id || !status || !last_updated){
+        console.log(`user: ${userEmail}, id: ${id}, stat: ${status}, upd: ${last_updated}`);
         return res.status(401).json({ error: "Missing information." });
       }
 
@@ -111,30 +115,16 @@ router.patch(
   }
 );
 
-// Route: GET /api/request/?start=...&end=...&page=...&limit=...&filter=...
+// Route: GET /api/request/?page=...&limit=..
 router.get("/", isAuthenticated as any, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const userEmail = authReq.user?.email;
-    const { schedule } = req.params;
-    const { start, end, filter } = req.query;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 1000;
     const offset = (page - 1) * limit;
 
-    const whereClause: any = { receiver_email: userEmail };
-
-    if (start && end) {
-      whereClause.date = { gte: new Date(start as string), lte: new Date(end as string) };
-    } else if (start) {
-      whereClause.date = { gte: new Date(start as string) };
-    } else if (end) {
-      whereClause.date = { lte: new Date(end as string) };
-    }
-
-    if (filter && filter !== "All") {
-      whereClause.category = filter;
-    }
+    const whereClause: any = { receiver_email: userEmail, status: 'Pending' };
 
     const [count, rows] = await prisma.$transaction([
       prisma.request.count({
@@ -148,6 +138,9 @@ router.get("/", isAuthenticated as any, async (req: Request, res: Response) => {
         orderBy: {
           last_updated: 'asc',
         },
+        include: {
+          event: true,
+        }
       }),
     ]);
 

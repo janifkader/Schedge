@@ -1,12 +1,12 @@
 "use client";
 
-import { Stack, Button, Typography, TextField } from "@mui/material";
+import { Stack, Button, Typography, TextField, Tooltip } from "@mui/material";
 
 import { styled } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { signin } from "@/api/api"
+import { signin, resendVerificationEmail } from "@/api/api"
 
 const Title = styled(Typography)(({ theme }) => ({
   ...theme.typography.h2,
@@ -32,13 +32,14 @@ export default function Signin() {
   const passRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [verified, setVerified] = useState(true);
 
   const router = useRouter();
 
   const handleSubmit = async function (e: React.FormEvent<HTMLFormElement>) {
     try {
       e.preventDefault();
-
+      setVerified(true);
       const email = emailRef.current?.value?.trim() || "";
       const pass = passRef.current?.value || "";
       await signin(email, pass);
@@ -47,6 +48,9 @@ export default function Signin() {
       console.log(err);
 
       if (err.message) {
+        if (err.message === 'Please verify your account.') {
+          setVerified(false);
+        }
         setErrorMessage(err.message);
       } else if (err?.errors) {
         setErrorMessage(err.errors[0]?.msg);
@@ -55,6 +59,25 @@ export default function Signin() {
       }
     }
   };
+
+  const handleResend = async function () {
+    try {
+      const email = emailRef.current?.value?.trim() || "";
+      setVerified(true);
+      await resendVerificationEmail(email);
+      setErrorMessage("Verification email resent successfully.");
+    }
+    catch (err: any) {
+      console.log(err);
+      if (err.message) {
+        setErrorMessage(err.message);
+      } else if (err?.errors) {
+        setErrorMessage(err.errors[0]?.msg);
+      } else {
+        setErrorMessage("An unexpected error occurred");
+      }
+    }
+  }
 
   return (
     <>
@@ -67,7 +90,28 @@ export default function Signin() {
       >
         <Stack spacing={0.5} sx={{ width: "100%", textAlign: "center" }}>
           <Title>Create Account</Title>
-          <Typography color="red">{errorMessage}</Typography>
+          {verified ? ( <Typography color="error">{errorMessage}</Typography> ) : 
+          ( <Tooltip 
+              title="Click to resend verification link" 
+              arrow 
+              placement="top"
+            >
+              <Typography 
+                color="error"
+                onClick={handleResend}
+                sx={{ 
+                  cursor: "pointer", 
+                  display: "inline-block",
+                  "&:hover": {
+                    textDecoration: "underline",
+                    color: "#d32f2f"
+                  }
+                }}
+              >
+                {errorMessage}
+              </Typography>
+            </Tooltip> 
+          )}
         </Stack>
         <Stack spacing={2} sx={{ width: "100%", justifyContent: "center", alignItems: "center", textAlign: "center", }}>
           <TextField size="small" required label="Email" inputRef={emailRef} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import NumberField from './NumberField'
 import {
   Dialog,
   DialogTitle,
@@ -21,8 +22,9 @@ type AddEventDialogProps = {
 
 export type NewEvent = {
   title: string;
-  date: string;
-  weight: string;
+  start_time: string;
+  end_time: string;
+  weight: number;
   cycle: string;
   span: string;
 };
@@ -39,9 +41,7 @@ const CancelButton = styled(Button)({
   "&:hover": { borderColor: "#631214", color: "#631214" },
 });
 
-const WEIGHT_OPTIONS = ["Low", "Medium", "High"];
 const CYCLE_OPTIONS = ["None", "Daily", "Weekly", "Monthly", "Yearly"];
-const SPAN_OPTIONS = ["30 min", "1 hour", "2 hours", "Half Day", "Full Day"];
 
 export default function AddEventDialog({
   open,
@@ -53,13 +53,13 @@ export default function AddEventDialog({
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   };
-
   const [form, setForm] = useState<NewEvent>({
     title: "",
-    date: toLocalISO(selectedDate),
-    weight: "Medium",
+    start_time: toLocalISO(selectedDate),
+    end_time: toLocalISO(selectedDate),
+    weight: 1,
     cycle: "None",
-    span: "1 hour",
+    span: "None",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -69,6 +69,13 @@ export default function AddEventDialog({
   };
 
   const handleSubmit = async () => {
+    if (form.cycle !== "None") {
+      const spanRegex = /^\d+\s(Weeks|Months|Years)$/;
+      if (!spanRegex.test(form.span)) {
+        setError("Span must match format: e.g. '3 Months'");
+        return;
+      }
+    }
     if (!form.title.trim()) {
       setError("Title is required.");
       return;
@@ -78,10 +85,17 @@ export default function AddEventDialog({
     try {
       await onSubmit(form);
       onClose();
-    } catch (err) {
-      setError("Failed to create event. Please try again.");
+    } 
+    catch (err) {
+      if (err.conflicts) {
+        setError(`Conflicts with: ${err.conflicts.map((c: any) => `${c.title} (weight ${c.weight})`).join(", ")}`);
+      }
+      else{
+        setError("Failed to create event. Please try again.");
+      }
       console.log(err);
-    } finally {
+    } 
+    finally {
       setLoading(false);
     }
   };
@@ -104,25 +118,24 @@ export default function AddEventDialog({
           />
 
           <TextField
-            label="Date & Time"
+            label="Start Time"
             type="datetime-local"
-            value={form.date}
-            onChange={handleChange("date")}
+            value={form.start_time}
+            onChange={handleChange("start_time")}
             fullWidth
             slotProps={{ inputLabel: { shrink: true } }}
           />
 
           <TextField
-            label="Weight"
-            value={form.weight}
-            onChange={handleChange("weight")}
-            select
+            label="End Time"
+            type="datetime-local"
+            value={form.end_time}
+            onChange={handleChange("end_time")}
             fullWidth
-          >
-            {WEIGHT_OPTIONS.map((o) => (
-              <MenuItem key={o} value={o}>{o}</MenuItem>
-            ))}
-          </TextField>
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
+
+          <NumberField label="Weight" min={1} max={10} onChange={(val: number) => setForm((prev) => ({ ...prev, weight: val }))}/>
 
           <TextField
             label="Cycle"
@@ -138,15 +151,25 @@ export default function AddEventDialog({
 
           <TextField
             label="Span"
+            variant="outlined"
+            fullWidth
+            required={form.cycle !== 'None'}
+            disabled={form.cycle === 'None'}
             value={form.span}
             onChange={handleChange("span")}
-            select
-            fullWidth
-          >
-            {SPAN_OPTIONS.map((o) => (
-              <MenuItem key={o} value={o}>{o}</MenuItem>
-            ))}
-          </TextField>
+            placeholder="e.g., 2 Weeks, 6 Months, 1 Years"
+            error={!!error && !form.span.trim()}
+            helperText={
+              error 
+                ? "Must be a number followed by a space and 'Weeks', 'Months', or 'Years' (e.g., '3 Months')" 
+                : "Format: [Number] [Weeks/Months/Years]"
+            }
+            inputProps={{
+              pattern: "^\\d+\\s(Weeks|Months|Years)$",
+              title: "Please match the format exactly (e.g., '12 Weeks')",
+            }}
+          />
+
 
           {error && form.title.trim() && (
             <p className="text-red-700 text-sm">{error}</p>

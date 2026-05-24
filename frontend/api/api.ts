@@ -26,6 +26,10 @@ async function send(
     json = await res.json();
   } catch {}
 
+  if (res.status === 409) {
+    throw { conflicts: json.conflicts, message: json.error };
+  }
+
   if (res.status === 401 && !isRetry) {
     try {
       const refreshRes = await fetch(
@@ -87,19 +91,30 @@ export function getCalendar(team_id?: string) {
   return send ("GET", `/api/schedule/`);
 }
 
-export function createEvent(sched_id: string, event: NewEvent) {
+export function createEvent(event_id: string, event: NewEvent) {
   return send ("POST", `/api/event/${sched_id}/`, event);
 }
 
-export function getEvents(schedule: number, date?: Dayjs | null, page: number = 1, limit: number = 1000) {
+export function createRequest(event_id: string, receiver: NewEvent, last_updated: Dayjs) {
+  return send ("POST", `/api/request/`, { event_id, receiver, last_updated });
+}
+
+export function getEvents(schedule: number, date?: Dayjs | null, page: number = 1, limit: number = 1000, search?: string) {
   const params = new URLSearchParams();
 
   if (date) {
     params.append("date", date.toISOString());
   }
 
+  if (search) {
+    params.append("search", search);
+  }
+
   params.append('page', page.toString());
   params.append('limit', limit.toString());
+
+  const offset = new Date().getTimezoneOffset();
+  params.append('timezone', offset.toString());
 
   const queryString = params.toString();
   const url = queryString ? `/api/event/${schedule}/?${queryString}` : `/api/event`;
@@ -109,6 +124,14 @@ export function getEvents(schedule: number, date?: Dayjs | null, page: number = 
 
 export function addExpense(name: string, amount: number, category: string, date: Date, isPaid: boolean = false) {
   return send("POST", `/api/expense/`, { name, amount, category, date, isPaid });
+}
+
+export function patchRequest(id: string, status: string, last_updated: Dayjs) {
+  return send("PATCH", `/api/request/${id}/`, { status, last_updated });
+}
+
+export function resendVerificationEmail(email: string) {
+  return send("GET", `/api/resend/${email}/`);
 }
 
 export function addSubscription(
@@ -144,6 +167,10 @@ export function editSubscription(
     nextRenewalDate,
     mode,
   });
+}
+
+export function verifyEmail(token: string) {
+  return send("GET", `/api/verify/?token=${token}`);
 }
 
 export function deleteSubscription(id: string) {
@@ -182,12 +209,26 @@ export function getTeams() {
   return send("GET", `/api/team/`);
 }
 
+export function getRequests(page: number = 1, limit: number = 1000) {
+  const params = new URLSearchParams();
+
+  params.append('page', page.toString());
+  params.append('limit', limit.toString());
+  const queryString = params.toString();
+  const url = queryString ? `/api/request/?${queryString}` : `/api/request`;
+  return send("GET", url);
+}
+
 export function getTeam(team_id) {
   return send("GET", `/api/team/${team_id}/`);
 }
 
 export function getUser() {
   return send("GET", "/api/user");
+}
+
+export function getSchedule() {
+  return send("GET", "/api/schedule/");
 }
 
 export function getUsers(page: number = 1, limit: number = 1000, search?: string) {

@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import jwt, { TokenExpiredError } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 
+
 export interface UserPayload {
   email: string;
 }
@@ -26,7 +27,7 @@ export const handleValidationErrors = (
   next();
 };
 
-export const isAuthenticated = (
+export const isAuthenticated = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction,
@@ -41,6 +42,21 @@ export const isAuthenticated = (
     const decoded = jwt.verify(token, JWT_SECRET) as UserPayload;
     req.user = decoded;
 
+    const dbUser = await prisma.user.findUnique({
+      where: { email: decoded.email },
+      select: { is_verified: true }
+    });
+
+    if (!dbUser) {
+      return res.status(404).json({ error: "User account no longer exists." });
+    }
+
+    if (!dbUser.is_verified) {
+      return res.status(403).json({ 
+        error: "Please verify your email before performing this action.",
+        code: "EMAIL_UNVERIFIED"
+      });
+    }
     next();
   } catch (error) {
     if (error instanceof TokenExpiredError) {

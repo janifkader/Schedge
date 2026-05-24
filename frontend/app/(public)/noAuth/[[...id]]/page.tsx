@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export default function LogoutPage() {
+export default function NoAuth() {
+  const { id: idParam } = use(params);
+  const id = idParam?.[0] || null;
   return (
     <div className="flex flex-col items-center justify-center h-screen gap-4">
       <p>Error! access denied Please login first</p>

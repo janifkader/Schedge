@@ -10,13 +10,14 @@ import AddEventDialog, { NewEvent } from "./AddEvent";
 // --- TYPES ---
 // This aligns with what your MySQL database schema might look like
 type ScheduledEvent = {
-  event_id: string;
   title: string;
-  date: string; 
+  start_time: string;
+  end_time: string;
   weight: string;
   cycle: string;
-  span: string
+  span: string;
 };
+
 const AddButton = styled(Button)(({ theme }) => ({
   ...theme.typography.h8,
   backgroundColor: "#82181a",
@@ -37,6 +38,14 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [open, setOpen] = useState(false);
+
+  const formatTime = (utcString: string) => {
+    return new Date(utcString).toLocaleTimeString("en-CA", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   const handleAddEvent = async function (event: NewEvent) {
     await createEvent(schedule, event);
@@ -138,14 +147,11 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
                   <span className="font-semibold text-zinc-800">
                     {event.title}
                   </span>
-                  <span className="text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded">
-                    {event.span}
-                  </span>
                 </div>
                 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-zinc-600 font-medium">
-                    {new Date(event.date).toLocaleDateString()}
+                    {new Date(event.start_time).toLocaleDateString()}, {formatTime(event.start_time)} to {new Date(event.end_time).toLocaleDateString()}, {formatTime(event.end_time)} 
                   </span>
                 </div>
               </li>

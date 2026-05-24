@@ -53,6 +53,7 @@ export default function ProtectedLayout({
                 <li><Link className="text-white" href="/home">Home</Link></li>
                 <li><Link className="text-white" href="/calendars">Calendars</Link></li>
                 <li><Link className="text-white" href="/teams">Teams</Link></li>
+                <li><Link className="text-white" href="/requests">Requests</Link></li>
                 <li><Link className="text-white" href="/account">Account</Link></li>
                 <li><button className="text-white bg-transparent border-none cursor-pointer" onClick={() => { handleSignout(); }}>
                       Signout

@@ -13,6 +13,7 @@ import {
 import { JWT_SECRET, REFRESH_SECRET } from "../config";
 import { prisma } from "../database";
 import { Prisma } from "@prisma/client";
+import { sendVerificationEmail } from "../services/email";
 
 const router = express.Router();
 
@@ -64,16 +65,21 @@ router.post(
       
       // Generate initial verification token
       const verifyToken = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
 
       const { refreshToken, cookies } = generateAuthCookies(
         email,
       );
 
-      await prisma.user.create({
+      const user = await prisma.user.create({
         data : {
           email,
           name,
           password: hashedPassword,
+          is_verified: false,
+          verification_token: verifyToken,
+          token_expires_at: expiresAt,
           phone,
           refresh_token: refreshToken,
            schedule: {
@@ -81,6 +87,8 @@ router.post(
            }
         }
       });
+
+      sendVerificationEmail(user.email, verifyToken);
 
       res.setHeader("Set-Cookie", cookies);
       return res.status(201).json({ email });
@@ -112,6 +120,12 @@ router.post(
         return res
           .status(401)
           .json({ error: "An account with this email does not exist" });
+      }
+
+      if (!user.is_verified) {
+        return res
+          .status(403)
+          .json({ error: "Please verify your account." });
       }
 
       const isValid = await compare(password, user.password);
@@ -259,6 +273,66 @@ router.get("/users/", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching users for dropdown:", error);
     return res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+// GET /api/auth/verify/?token=XYZ...
+router.get("/verify/", async (req: Request, res: Response) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).json({ error: "Missing verification token." });
+  }
+
+  try {
+    // Find the user with this exact token
+    const user = await prisma.user.findUnique({
+      where: { verification_token: token as string },
+    });
+
+    // If no user matches, or the token expired, reject it
+    if (!user || !user.token_expires_at || user.token_expires_at < new Date()) {
+      return res.status(400).json({ error: "Invalid or expired verification token." });
+    }
+
+    // Update the user to verified and wipe the token data
+    await prisma.user.update({
+      where: { email: user.email },
+      data: {
+        is_verified: true,
+        verification_token: null, // Wipe the token so it can't be used again
+        token_expires_at: null,
+      },
+    });
+
+    return res.status(200).json({ message: "Email successfully verified! You can now log in." });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// GET /api/resend/:email/
+router.get("/resend/:email/", async (req: Request, res: Response) => {
+  const { email } = req.params as { email: string };
+  if (!email) {
+    return res.status(401).json({ error: "Missing Information" });
+  }
+  try {
+    const token = await prisma.user.findUnique({
+      where: { email },
+      select: { verification_token: true, }
+    });
+    if (!token || !token.verification_token) {
+      return res.status(401).json({ error: "Please Sign Up First!" });
+    }
+    sendVerificationEmail(email, token.verification_token);
+    return res.status(200).json({ message: "Verification email resent successfully." });
+  }
+  catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

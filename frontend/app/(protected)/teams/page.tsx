@@ -20,7 +20,7 @@ interface Team {
   members: User[];
 }
 
-export default function TeamsPage() {
+export default function Teams() {
   // State management
   const [teams, setTeams] = useState<Team[]>([]);
   const [name, setName] = useState("");

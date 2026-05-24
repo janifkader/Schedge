@@ -15,7 +15,9 @@ model User {
   password       String
   phone          String?  // Made optional. Best practice so signup doesn't block if they skip it.
   refresh_token  String?  @unique // Optional, as it won't exist until they log in.
-
+  is_verified        Boolean   @default(false)
+  verification_token String?   @unique
+  token_expires_at   DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -74,12 +76,13 @@ model Team {
 model Event {
   event_id       String   @id @default(uuid())
   title          String
-  date           DateTime
-  weight         String
+  start_time     DateTime
+  end_time       DateTime
+  weight         Int
   cycle          String
-  span           String
-  
+  span           DateTime
   schedule_id    String
+  recurrence_id  String?
 
   participants   Participates[]
   requests       Request[]
@@ -87,8 +90,8 @@ model Event {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  // Fixed the index reference
-  @@index([date])
+  @@index([start_time])
+  @@index([schedule_id])
 }
 
 // --- JOIN TABLES ---
