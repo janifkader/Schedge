@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "../database";
 import { sendSMS } from "../services/sms";
+import { sendEmail } from "../services/email";
 
 export const startEventReminderJob = () => {
   // Runs every minute
@@ -31,7 +32,7 @@ export const startEventReminderJob = () => {
 
       for (const event of upcomingEvents) {
         for (const { user } of event.participants) {
-          if (!user || !user.phone || !user.name) continue;
+          if (!user || !user.phone || !user.email || !user.name) continue;
           await sendSMS(
             user.phone,
             `Hey ${user.name}, ${event.title} starts at ${new Date(event.start_time).toLocaleTimeString("en-CA", {
@@ -40,6 +41,16 @@ export const startEventReminderJob = () => {
               hour12: true,
             })}`
           );
+          const subject = `Schedge Event Reminder: ${event.title}`;
+          const html = `
+            <h1>Upcoming Event!</h1>
+            <p>Hey ${user.name}, ${event.title} starts at ${new Date(event.start_time).toLocaleTimeString("en-CA", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })}</p>
+          `;
+          await sendEmail(user.email, subject, html);
         }
 
         await prisma.event.update({

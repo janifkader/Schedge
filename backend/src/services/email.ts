@@ -31,3 +31,15 @@ export async function sendVerificationEmail(toEmail: string, token: string) {
 
   await transporter.sendMail(mailOptions);
 }
+
+
+export async function sendEmail(toEmail: string, subject: string, body: string) {
+
+  const mailOptions = {
+    from: '"Schedge Support" <noreply@schedge.com>',
+    to: toEmail,
+    subject,
+    html: body,
+  };
+  await transporter.sendMail(mailOptions);
+}

@@ -151,7 +151,7 @@ export default function AddEventDialog({
             min={1} 
             max={10} 
             value={form.weight}
-            onChange={(val: number) => setForm((prev) => ({ ...prev, weight: val }))}
+            onValueChange={(val: number | null) => setForm((prev) => ({ ...prev, weight: val ?? 1 }))}
           />
 
           <TextField
