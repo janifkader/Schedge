@@ -13,6 +13,7 @@ export default function ProtectedLayout({
 }) {
   const [username, setUsername] = useState(null);
   const router = useRouter();
+  const [path, setPath] = useState(0);
 
   const handleSignout = async function() {
     await signout();
@@ -24,8 +25,13 @@ export default function ProtectedLayout({
       try {
         const data = await getUser();
         setUsername(data.username);
-      } catch {
-        window.location.href = "/noAuth";
+      } catch (err){
+        if (err.message){
+          if (err.message === 'Please verify your email before performing this action.') {
+            setPath[1];
+          }
+        }
+        window.location.href = `/noAuth/${path}`;
       }
     };
     loadUser();

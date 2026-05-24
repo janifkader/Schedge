@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { body, validationResult } from "express-validator";
 import jwt, { TokenExpiredError } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
-
+import { prisma } from "../database";
 
 export interface UserPayload {
   email: string;
