@@ -1,5 +1,5 @@
 "use client";
-import Navbar from "@/components/Navbar";
+
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -25,10 +25,10 @@ export default function ProtectedLayout({
       try {
         const data = await getUser();
         setUsername(data.username);
-      } catch (err){
-        if (err.message){
+      } catch (err: unknown){
+        if (err instanceof Error && err.message){
           if (err.message === 'Please verify your email before performing this action.') {
-            setPath[1];
+            setPath(1);
           }
         }
         window.location.href = `/noAuth/${path}`;

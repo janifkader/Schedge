@@ -1,6 +1,11 @@
 import { Dayjs } from "dayjs";
 import { NewEvent } from "../components/AddEvent";
 
+interface User {
+  email: string;
+  name: string;
+}
+
 async function send(
   method: string,
   url: string,
@@ -102,7 +107,7 @@ export function editEvent(sched_id: string, event_id: string, event: NewEvent) {
   return send("PATCH", `/api/event/${sched_id}/${event_id}/`, event);
 }
 
-export function createRequest(event_id: string, receiver: NewEvent, last_updated: Dayjs) {
+export function createRequest(event_id: string, receiver: string, last_updated: Dayjs) {
   return send("POST", `/api/request/`, { event_id, receiver, last_updated });
 }
 
@@ -111,7 +116,7 @@ export function deleteEvent(event_id: string) {
 }
 
 export function getEvents(
-  schedule: number, 
+  schedule: string, 
   date?: Dayjs | null, 
   page: number = 1, 
   limit: number = 1000, 
@@ -219,7 +224,7 @@ export function getExpenses(startDate?: Dayjs | null, endDate?: Dayjs | null, pa
   return send("GET", url);
 }
 
-export function createTeam(team_name: string, members: { email: string, name: string }) {
+export function createTeam(team_name: string, members: User[]) {
   return send("POST", `/api/team/`, { team_name, members });
 }
 

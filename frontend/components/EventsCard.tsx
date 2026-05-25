@@ -6,21 +6,23 @@ import { Button, Typography, IconButton } from "@mui/material";
 import ClearIcon from '@mui/icons-material/Clear';
 import { getEvents, createEvent, editEvent, deleteEvent } from "../api/api";
 import { styled } from "@mui/material/styles";
+import dayjs from "dayjs";
 import AddEventDialog, { NewEvent } from "./AddEvent";
 
 // --- TYPES ---
 // This aligns with what your MySQL database schema might look like
 type ScheduledEvent = {
+  event_id: string;
   title: string;
   start_time: string;
   end_time: string;
-  weight: string;
+  weight: number;
   cycle: string;
   span: string;
 };
 
 const AddButton = styled(Button)(({ theme }) => ({
-  ...theme.typography.h8,
+  ...theme.typography.h6,
   backgroundColor: "#82181a",
   color: "#FFFFFF",
   "&:hover": {
@@ -28,7 +30,7 @@ const AddButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-export default function EventsCard({ selectedDate, schedule }: { selectedDate: Date | null, schedule: number }) {
+export default function EventsCard({ selectedDate, schedule }: { selectedDate: Date, schedule: string }) {
   const [events, setEvents] = useState<ScheduledEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,11 +38,6 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
   const [open, setOpen] = useState(false);
   const [update, setUpdate] = useState(0);
   const [editingEvent, setEditingEvent] = useState<ScheduledEvent | null>(null);
-
-  const fetchEvents = async (date: Date, currentPage: number, schedule: number): Promise<ScheduledEvent[]> => {
-    const events = await getEvents(schedule, date, currentPage, 5);
-    return events;
-  };
 
   const handleDelete = async (event_id: string) => {
     try {
@@ -62,19 +59,13 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
 
   const handleAddEvent = async function (event: NewEvent) {
     await createEvent(schedule, event);
-    const data = await fetchEvents(selectedDate, currentPage, schedule);
-    setEvents(data.events);
-    setTotalPages(data.totalPages);
     setUpdate((prevUpdate) => prevUpdate + 1);
   };
 
   const handleEditEvent = async (event: NewEvent) => {
     console.log("EDITING!");
     try {
-      await editEvent(schedule, editingEvent!.event_id, event); // your API call
-      const data = await fetchEvents(selectedDate, currentPage, schedule);
-      setEvents(data.events);
-      setTotalPages(data.totalPages);
+      await editEvent(schedule, editingEvent!.event_id, event);
       setEditingEvent(null);
       setUpdate((prevUpdate) => prevUpdate + 1);
     }
@@ -89,7 +80,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
     const loadEvents = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchEvents(selectedDate, currentPage, schedule);
+        const data = await getEvents(schedule, dayjs(selectedDate), currentPage, 5);
         setEvents(data.events);
         setTotalPages(data.totalPages);
       } catch (error) {

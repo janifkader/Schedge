@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import dayjs from "dayjs";
 import { getUsers, createRequest, getRequests, getEvents, getSchedule, patchRequest } from '@/api/api';
 import { useRouter } from "next/navigation";
 
@@ -25,7 +26,7 @@ interface Request {
   receiver_email: string;
   status: string;
   last_updated: string;
-  events: Event[];
+  event: Event;
 }
 
 export default function Requests() {
@@ -50,7 +51,7 @@ export default function Requests() {
 
   const handlePatch = async (request_id: string, status: string) => {
   	try{
-  		const pat = await patchRequest(request_id, status, new Date());
+  		const pat = await patchRequest(request_id, status, dayjs(new Date()));
   		setUpdate((prevUpdate) => prevUpdate + 1);
   	}
   	catch (err: any) {
@@ -108,7 +109,7 @@ export default function Requests() {
     try {
     	console.log(events[0].event_id);
     	console.log(members[0].email);
-      const res = await createRequest(events[0].event_id, members[0].email, new Date());
+      const res = await createRequest(events[0].event_id, members[0].email, dayjs(new Date()));
       setMembers([]);
       setEvents([]);
     } catch (err: any) {
@@ -317,7 +318,7 @@ export default function Requests() {
 								  )}
 								  <div className="flex items-center justify-between">
                     <span className="text-xs bg-white text-black px-2 py-1 rounded-full hover:bg-red-700 hover:text-white hover:cursor-pointer font-medium" onClick={(e) => { e.stopPropagation(); handlePatch(request.request_id, 'Accepted'); }}>Accept?</span>
-                    <span className="text-xs bg-white text-black px-2 py-1 rounded-full hover:bg-red-700 hover:text-white hover:cursor-pointer font-medium" onClick={() => { e.stopPropagation(); handlePatch(request.request_id, 'Rejected'); }}>Reject?</span>
+                    <span className="text-xs bg-white text-black px-2 py-1 rounded-full hover:bg-red-700 hover:text-white hover:cursor-pointer font-medium" onClick={(e) => { e.stopPropagation(); handlePatch(request.request_id, 'Rejected'); }}>Reject?</span>
                   </div>
                 </div>
               ))}

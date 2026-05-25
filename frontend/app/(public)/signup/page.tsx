@@ -93,10 +93,12 @@ export default function Register() {
               const val = e.target.value.replace(/\D/g, ""); // strip non-digits
               setPhoneRef(val);
             }}
-            inputProps={{
-              inputMode: "numeric",
-              pattern: "[0-9]*",
-              maxLength: 10,
+            slotProps={{
+              htmlInput: {
+                inputMode: "numeric",
+                pattern: "[0-9]*",
+                maxLength: 10,
+              }
             }}
           />
           <TextField

@@ -232,9 +232,11 @@ export default function AddEventDialog({
                 ? "Select a cycle first"
                 : "Format: [Number] [Weeks/Months/Years] (e.g., '3 Months')"
             }
-            inputProps={{
-              pattern: "^\\d+\\s(Weeks|Months|Years)$",
-              title: "Please match the format exactly (e.g., '12 Weeks')",
+            slotProps={{
+              htmlInput: {
+                pattern: "^\\d+\\s(Weeks|Months|Years)$",
+                title: "Please match the format exactly (e.g., '12 Weeks')",
+              }
             }}
           />
 

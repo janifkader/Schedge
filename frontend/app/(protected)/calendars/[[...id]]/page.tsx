@@ -9,7 +9,9 @@ import Calender from "../../../../components/Calendar";
 import EventsCard from "../../../../components/EventsCard";
 import { use } from "react";
 
-export default function Calendars({ params }: { params: { id?: string[] } }) {
+type Params = Promise<{ id?: string[] }>;
+
+export default function Calendars({ params }: { params: Params }) {
   const pathname = usePathname();
   const { id: idParam } = use(params);
   const id = idParam?.[0] || null;
