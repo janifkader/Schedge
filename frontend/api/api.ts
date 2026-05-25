@@ -98,8 +98,16 @@ export function createEvent(sched_id: string, event: NewEvent) {
   return send("POST", `/api/event/${sched_id}/`, event);
 }
 
+export function editEvent(sched_id: string, event_id: string, event: NewEvent) {
+  return send("PATCH", `/api/event/${sched_id}/${event_id}/`, event);
+}
+
 export function createRequest(event_id: string, receiver: NewEvent, last_updated: Dayjs) {
   return send("POST", `/api/request/`, { event_id, receiver, last_updated });
+}
+
+export function deleteEvent(event_id: string) {
+  return send("DELETE", `/api/event/${event_id}/`);
 }
 
 export function getEvents(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NumberField from './NumberField';
 import {
   Dialog,
@@ -18,6 +18,15 @@ type AddEventDialogProps = {
   onClose: () => void;
   onSubmit: (event: NewEvent) => Promise<void>;
   selectedDate: Date;
+  existingEvent?: {
+    event_id: string;
+    title: string;
+    start_time: string;
+    end_time: string;
+    weight: number;
+    cycle: string;
+    span: string;
+  };
 };
 
 export type NewEvent = {
@@ -27,6 +36,7 @@ export type NewEvent = {
   weight: number;
   cycle: string;
   span: string;
+  applyToAll?: boolean;
 };
 
 const ConfirmButton = styled(Button)({
@@ -48,22 +58,62 @@ export default function AddEventDialog({
   onClose,
   onSubmit,
   selectedDate,
+  existingEvent,
 }: AddEventDialogProps) {
+  const isEditing = !!existingEvent;
   const toLocalISO = (date: Date) => {
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   };
 
-  const [form, setForm] = useState<NewEvent>({
-    title: "",
-    start_time: toLocalISO(selectedDate),
-    end_time: toLocalISO(selectedDate),
-    weight: 1,
-    cycle: "None",
-    span: "None",
-  });
+  const [form, setForm] = useState<NewEvent>(() =>
+    existingEvent
+      ? {
+          title: existingEvent.title,
+          start_time: toLocalISO(new Date(existingEvent.start_time)),
+          end_time: toLocalISO(new Date(existingEvent.end_time)),
+          weight: existingEvent.weight,
+          cycle: existingEvent.cycle,
+          span: existingEvent.span,
+        }
+      : {
+          title: "",
+          start_time: toLocalISO(selectedDate),
+          end_time: toLocalISO(selectedDate),
+          weight: 1,
+          cycle: "None",
+          span: "None",
+        }
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [applyToAll, setApplyToAll] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        existingEvent
+          ? {
+              title: existingEvent.title,
+              start_time: toLocalISO(new Date(existingEvent.start_time)),
+              end_time: toLocalISO(new Date(existingEvent.end_time)),
+              weight: existingEvent.weight,
+              cycle: existingEvent.cycle,
+              span: existingEvent.span,
+            }
+          : {
+              title: "",
+              start_time: toLocalISO(selectedDate),
+              end_time: toLocalISO(selectedDate),
+              weight: 1,
+              cycle: "None",
+              span: "None",
+            }
+      );
+      setError("");
+      setApplyToAll(false);
+    }
+  }, [open]);
 
   const handleChange = (field: keyof NewEvent) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -94,7 +144,7 @@ export default function AddEventDialog({
     setError("");
     setLoading(true);
     try {
-      await onSubmit(form);
+      await onSubmit({ ...form, applyToAll });
       onClose();
     } 
     catch (err: any) {
@@ -113,7 +163,7 @@ export default function AddEventDialog({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle className="bg-zinc-50 border-b border-zinc-200 font-bold text-zinc-800">
-        Add Event
+        {isEditing ? "Edit Event" : "Add Event"}
       </DialogTitle>
 
       <DialogContent className="bg-white space-y-4 pt-4">
@@ -188,6 +238,21 @@ export default function AddEventDialog({
             }}
           />
 
+          {isEditing && existingEvent?.cycle !== "None" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="applyToAll"
+                checked={applyToAll}
+                onChange={(e) => setApplyToAll(e.target.checked)}
+                className="w-4 h-4 accent-red-900"
+              />
+              <label htmlFor="applyToAll" className="text-sm text-zinc-700">
+                Apply changes to all future occurrences
+              </label>
+            </div>
+          )}
+
           {error && form.title.trim() && form.cycle === 'None' && (
             <p className="text-red-700 text-sm">{error}</p>
           )}
@@ -199,7 +264,7 @@ export default function AddEventDialog({
           Cancel
         </CancelButton>
         <ConfirmButton variant="contained" onClick={handleSubmit} disabled={loading}>
-          {loading ? "Adding..." : "Add Event"}
+          {loading ? (isEditing ? "Saving..." : "Adding...") : (isEditing ? "Save Changes" : "Add Event")}
         </ConfirmButton>
       </DialogActions>
     </Dialog>

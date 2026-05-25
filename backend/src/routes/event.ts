@@ -148,6 +148,87 @@ router.post(
   }
 );
 
+// PATCH /api/event/:schedule/
+router.patch(
+  "/:sched/:event_id/",
+  isAuthenticated as any,
+  handleValidationErrors,
+  async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const { sched, event_id } = req.params as { sched: string; event_id: string };
+      const { title, start_time, end_time, weight, cycle, span, applyToAll } = req.body;
+      const userEmail = authReq.user?.email;
+      if (!userEmail || !title || !start_time || !end_time || !weight || !cycle || !span || !sched) {
+        //console.log(`email: ${userEmail}, title: ${title}, date: ${date}, weight: ${weight}, cycle: ${cycle}, span: ${span}, sched: ${sched}`);
+        return res.status(401).json({ error: "Missing information." });
+      }
+      const existing = await prisma.event.findUnique({
+        where: { event_id },
+      });
+      if (!existing) {
+        return res.status(404).json({ error: "Event not found." });
+      }
+
+      if (existing.schedule_id !== sched) {
+        return res.status(403).json({ error: "Unauthorized." });
+      }
+
+      const baseStart = new Date(start_time.includes('Z') || start_time.includes('+') ? start_time : start_time + 'Z');
+      const baseEnd = new Date(end_time.includes('Z') || end_time.includes('+') ? end_time : end_time + 'Z');
+
+      if (applyToAll && existing.recurrence_id) {
+        // Update all future occurrences — only non-time fields since each has its own time
+        await prisma.event.updateMany({
+          where: {
+            recurrence_id: existing.recurrence_id,
+            start_time: { gte: existing.start_time }, // from this event onwards
+          },
+          data: {
+            title,
+            weight,
+            cycle,
+            span,
+          },
+        });
+
+        // Update time fields only on this specific event
+        await prisma.event.update({
+          where: { event_id },
+          data: {
+            start_time: baseStart,
+            end_time: baseEnd,
+          },
+        });
+      } else {
+        // Update only this event
+        await prisma.event.update({
+          where: { event_id },
+          data: {
+            title,
+            start_time: baseStart,
+            end_time: baseEnd,
+            weight,
+            cycle,
+            span,
+          },
+        });
+      }
+
+      const updated = await prisma.event.findUnique({ where: { event_id } });
+      return res.status(200).json({ event: updated });
+    } catch (error: any) {
+      console.error(error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2002") {
+          return res.status(400).json({ error: "A unique constraint failed." });
+        }
+      }
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
 // POST /api/event/participation/:id/
 router.post(
   "/:id/",
@@ -310,7 +391,31 @@ router.get("/:id/participants/", isAuthenticated as any, async (req: Request, re
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Failed to fetch expenses" });
+    return res.status(500).json({ error: "Failed to fetch participants" });
+  }
+});
+
+//Route: DELETE /api/event/:event_id/
+router.delete("/:event_id/", isAuthenticated as any, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const { event_id } = req.params as { event_id: string };
+
+    await prisma.$transaction([
+      prisma.participates.deleteMany({ where: { event_id } }),
+      prisma.request.deleteMany({ where: { event_id } }),
+    ]);
+
+    const ev = await prisma.event.delete({
+      where: {
+        event_id,
+      },
+    });
+
+    return res.status(200).json({ event: ev });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Failed to delete event" });
   }
 });
 

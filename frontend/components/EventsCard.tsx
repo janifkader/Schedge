@@ -2,8 +2,9 @@
 
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
-import { Button, Typography } from "@mui/material";
-import { getEvents, createEvent } from "../api/api";
+import { Button, Typography, IconButton } from "@mui/material";
+import ClearIcon from '@mui/icons-material/Clear';
+import { getEvents, createEvent, editEvent, deleteEvent } from "../api/api";
 import { styled } from "@mui/material/styles";
 import AddEventDialog, { NewEvent } from "./AddEvent";
 
@@ -27,17 +28,29 @@ const AddButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-const fetchEvents = async (date: Date, currentPage: number, schedule: number): Promise<ScheduledEvent[]> => {
-  const events = await getEvents(schedule, date, currentPage, 5);
-  return events;
-};
-
 export default function EventsCard({ selectedDate, schedule }: { selectedDate: Date | null, schedule: number }) {
   const [events, setEvents] = useState<ScheduledEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [open, setOpen] = useState(false);
+  const [update, setUpdate] = useState(0);
+  const [editingEvent, setEditingEvent] = useState<ScheduledEvent | null>(null);
+
+  const fetchEvents = async (date: Date, currentPage: number, schedule: number): Promise<ScheduledEvent[]> => {
+    const events = await getEvents(schedule, date, currentPage, 5);
+    return events;
+  };
+
+  const handleDelete = async (event_id: string) => {
+    try {
+      await deleteEvent(event_id);
+      setUpdate((prevUpdate) => prevUpdate + 1);
+    }
+    catch (err) {
+      console.error("Delete Failed:", err);
+    }
+  }
 
   const formatTime = (utcString: string) => {
     return new Date(utcString).toLocaleTimeString("en-CA", {
@@ -52,6 +65,22 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
     const data = await fetchEvents(selectedDate, currentPage, schedule);
     setEvents(data.events);
     setTotalPages(data.totalPages);
+    setUpdate((prevUpdate) => prevUpdate + 1);
+  };
+
+  const handleEditEvent = async (event: NewEvent) => {
+    console.log("EDITING!");
+    try {
+      await editEvent(schedule, editingEvent!.event_id, event); // your API call
+      const data = await fetchEvents(selectedDate, currentPage, schedule);
+      setEvents(data.events);
+      setTotalPages(data.totalPages);
+      setEditingEvent(null);
+      setUpdate((prevUpdate) => prevUpdate + 1);
+    }
+    catch (err) {
+      console.error("Edit Failed:", err);
+    }
   };
 
   useEffect(() => {
@@ -71,7 +100,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
     };
 
     loadEvents();
-  }, [selectedDate, currentPage]);
+  }, [selectedDate, currentPage, update]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -118,11 +147,21 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
         </div>
         <div>
           <AddButton onClick={() => setOpen(true)}>+ Add Event</AddButton>
+          {/* Add Event Dialog */}
           <AddEventDialog
-            open={open}
+            open={open && !editingEvent}
             onClose={() => setOpen(false)}
             onSubmit={handleAddEvent}
             selectedDate={selectedDate}
+          />
+
+          {/* Edit Event Dialog */}
+          <AddEventDialog
+            open={!!editingEvent}
+            onClose={() => setEditingEvent(null)}
+            onSubmit={handleEditEvent}
+            selectedDate={selectedDate}
+            existingEvent={editingEvent ?? undefined}
           />
         </div>
         <div className="text-xs font-semibold px-2 py-1 bg-zinc-200 text-zinc-700 rounded-md">
@@ -141,12 +180,22 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
             {events.map((event) => (
               <li
                 key={event.event_id}
+                onClick={() => setEditingEvent(event)}
                 className="group flex flex-col p-4 border border-zinc-100 rounded-lg hover:border-red-900 hover:shadow-md transition-all duration-200 cursor-pointer"
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-semibold text-zinc-800">
                     {event.title}
                   </span>
+                 <IconButton 
+                  size="small" 
+                  onClick={(e) => { e.stopPropagation(); handleDelete(event.event_id); }}
+                  sx={{ 
+                    borderRadius: '0px',
+                    border: '2px solid transparent',
+                    color: '#6b7280', 
+                    '&:hover': { color: '#fff', backgroundColor: '#dc2626', borderColor: '#dc2626' } 
+                  }}> <ClearIcon/> </IconButton>
                 </div>
                 
                 <div className="flex justify-between items-center text-sm">
