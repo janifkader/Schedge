@@ -18,26 +18,13 @@ app.use(passport.initialize());
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://schedge-frontend.bravegrass-308b42ec.australiaeast.azurecontainerapps.io/signup",
+    "https://schedge-frontend.bravegrass-308b42ec.australiaeast.azurecontainerapps.io",
   ],
   credentials: true,
 }));
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log("HTTP request", req.method, req.url, req.body);
-  next();
-});
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
-  if (req.method === "OPTIONS") {
-    res.sendStatus(200);
-    return;
-  }
   next();
 });
 

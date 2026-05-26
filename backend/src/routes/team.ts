@@ -79,20 +79,21 @@ router.post(
   }
 );
 
-// Route: POST /api/team/:id/
-router.post("/:id/", isAuthenticated as any, async (req: Request, res: Response) => {
+// Route: PUT /api/team/:id/
+router.put("/:id/", isAuthenticated as any, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const { id } = req.params as { id: string };
+    const { email } = req.body
     const userEmail = authReq.user?.email;
 
-    if (!id || !userEmail) {
+    if (!id || !email) {
       return res.status(401).json({ error: "Missing information." });
     }
 
     const team = await prisma.membership.create({
       data : {
-        user_email: userEmail,
+        user_email: email,
         team_id: id,
       }
     });
@@ -137,7 +138,18 @@ router.get("/", isAuthenticated as any, async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Missing information." });
     }
 
-    const whereClause: any = { leader_email: userEmail };
+    const whereClause: any = {
+      OR: [
+        { leader_email: userEmail },
+        {
+          members: {
+            some: {
+              user_email: userEmail,
+            }
+          }
+        }
+      ]
+    };
 
     const [count, rows] = await prisma.$transaction([
       prisma.team.count({

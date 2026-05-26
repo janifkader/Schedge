@@ -228,6 +228,10 @@ export function createTeam(team_name: string, members: User[]) {
   return send("POST", `/api/team/`, { team_name, members });
 }
 
+export function addMember(id: string, email: string) {
+  return send("PUT", `/api/team/${id}/`, { email });
+} 
+
 export function getTeams() {
   return send("GET", `/api/team/`);
 }

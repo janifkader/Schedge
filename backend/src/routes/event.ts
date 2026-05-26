@@ -297,6 +297,7 @@ router.get("/:schedule/", isAuthenticated as any, async (req: Request, res: Resp
     if (search) {
       whereClause.title = {
         contains: search,
+        mode: "insensitive",
       };
     }
 

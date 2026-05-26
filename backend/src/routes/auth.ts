@@ -241,6 +241,7 @@ router.get("/users/", async (req: Request, res: Response) => {
       ? {
           name: {
             contains: search,
+            mode: 'insensitive' as const,
           },
         }
       : {};
