@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { body, validationResult } from "express-validator";
+import { body, validationResult, param, query } from "express-validator";
 import jwt, { TokenExpiredError } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 import { prisma } from "../database";
@@ -102,3 +102,23 @@ export const validateLogin = [
     .notEmpty()
     .withMessage("Password must be at least 8 characters long"),
 ];
+
+export const validateEvent = [
+  param("sched")
+    .exists()
+    .isNumeric()
+    .trim().escape(),
+  body("title")
+    .exists()
+    .matches(/^[A-Za-z0-9 _.,?!-]+$/)
+    .trim().escape(),
+  body("weight")
+    .exists()
+    .isNumeric()
+    .matches(/^[0-9]+$/)
+    .trim().escape(),
+];
+
+export const validateTeam = [];
+
+export const validateRequest = [];

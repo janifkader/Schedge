@@ -79,6 +79,24 @@ export function signup(
   });
 }
 
+export function updateUser(
+  name: string,
+  email: string,
+  password: string,
+  phone: string,
+) {
+  return send("PATCH", "/api/user/", {
+    name,
+    email,
+    password,
+    phone,
+  });
+}
+
+export function changePassword(oldPassword: string, newPassword: string) {
+  return send("PATCH", `/api/user/password`, { oldPassword, newPassword });
+}
+
 export function signin(email: string, password: string) {
   return send("POST", `/api/signin/`, { email, password });
 }
@@ -86,6 +104,20 @@ export function signin(email: string, password: string) {
 export function signout() {
   return send("GET", `/api/signout/`);
 }
+
+export const uploadAvatar = async (file: File) => {
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:4000";
+  const formData = new FormData();
+  formData.append("avatar", file);
+  const res = await fetch(`${baseUrl}/api/user/avatar/`, {
+    method: "PUT",
+    credentials: "include",
+    body: formData,
+    // No Content-Type header — browser sets it automatically with the correct boundary
+  });
+  if (!res.ok) throw new Error("Failed to upload avatar");
+  return res.json();
+};
 
 export function createCalendar() {
   return send("POST", `/api/schedule/`);

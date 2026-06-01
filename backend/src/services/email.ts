@@ -1,22 +1,13 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT || "587", 10),
-  // secure: true for port 465, false for port 587
-  secure: process.env.EMAIL_PORT === "465",
-  auth: {
-    user: process.env.EMAIL_USER, // Your SMTP username
-    pass: process.env.EMAIL_PASS, // Your SMTP password
-  },
-});
+const resend = new Resend(process.env.EMAIL_PASS);
 
 export async function sendVerificationEmail(toEmail: string, token: string) {
   const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
   const verificationLink = `${baseUrl}/verify?token=${token}`;
 
-  const mailOptions = {
-    from: '"Schedge Support" <noreply@schedge.com>',
+  await resend.emails.send({
+    from: '"Schedge Support" <noreply@schedge.dev>',
     to: toEmail,
     subject: "Verify your Schedge account",
     html: `
@@ -27,19 +18,16 @@ export async function sendVerificationEmail(toEmail: string, token: string) {
       </a>
       <p style="margin-top: 20px; font-size: 12px; color: #666;">This link will expire in 24 hours.</p>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 }
 
 
 export async function sendEmail(toEmail: string, subject: string, body: string) {
 
-  const mailOptions = {
+  await resend.emails.send({
     from: '"Schedge Support" <noreply@schedge.com>',
     to: toEmail,
     subject,
     html: body,
-  };
-  await transporter.sendMail(mailOptions);
+  });
 }

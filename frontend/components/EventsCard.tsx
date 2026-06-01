@@ -22,11 +22,18 @@ type ScheduledEvent = {
 };
 
 const AddButton = styled(Button)(({ theme }) => ({
-  ...theme.typography.h6,
+  ...theme.typography.button,
   backgroundColor: "#82181a",
   color: "#FFFFFF",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  backgroundImage: "linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+  borderRadius: "6px",
+  padding: "10px 24px",
+  letterSpacing: "0.5px",
+  
   "&:hover": {
-    backgroundColor: "#631214",
+    backgroundColor: "#9e1d20",
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
 }));
 

@@ -14,6 +14,18 @@ import { JWT_SECRET, REFRESH_SECRET } from "../config";
 import { prisma } from "../database";
 import { Prisma } from "@prisma/client";
 import { sendVerificationEmail } from "../services/email";
+import multer from "multer";
+import { uploadAvatar } from "../services/profile";
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only images are allowed"));
+  },
+});
 
 const router = express.Router();
 
@@ -26,16 +38,18 @@ export const generateAuthCookies = (email: string) => {
   const accessCookie = serialize("token", accessToken, {
     path: "/",
     httpOnly: true,
-    secure: process.env.NODE_ENV === "prod",
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain: process.env.NODE_ENV === "production" ? ".schedge.dev" : undefined,
     maxAge: 15 * 60,
   });
 
   const refreshCookie = serialize("refresh_token", refreshToken, {
     path: "/api/refresh",
     httpOnly: true,
-    secure: process.env.NODE_ENV === "prod",
-    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain: process.env.NODE_ENV === "production" ? ".schedge.dev" : undefined,
     maxAge: 7 * 24 * 60 * 60,
   });
 
@@ -222,6 +236,8 @@ router.get("/user", isAuthenticated as any, async (req: Request, res: Response) 
       return res.json({
         username: user.name,
         email: user.email,
+        phone: user.phone,
+        avatar_url: user.avatar_url,
       });
     }
     catch (error) {
@@ -334,6 +350,65 @@ router.get("/resend/:email/", async (req: Request, res: Response) => {
   catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// PUT /api/user/avatar/
+router.put(
+  "/user/avatar/",
+  isAuthenticated as any,
+  upload.single("avatar"),
+  async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const email = authReq.user?.email;
+      if (!req.file) return res.status(400).json({ error: "No file uploaded." });
+      const url = await uploadAvatar(req.file.buffer, email!);
+      await prisma.user.update({
+        where: { email },
+        data: { avatar_url: url },
+      });
+      return res.status(200).json({ avatar_url: url });
+    } catch (error: any) {
+      console.error(error);
+      return res.status(500).json({ error: "Failed to upload avatar." });
+    }
+  }
+);
+
+// PATCH /api/user/
+router.patch("/user/", isAuthenticated as any, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const { name, phone } = req.body;
+    const user = await prisma.user.update({
+      where: { email: authReq.user?.email },
+      data: { name, phone: phone ? `+1${phone}` : undefined },
+    });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to update profile." });
+  }
+});
+
+// PATCH /api/user/password/
+router.patch("/user/password/", isAuthenticated as any, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const { currentPassword, newPassword } = req.body;
+    const user = await prisma.user.findUnique({ where: { email: authReq.user?.email } });
+    if (!user) return res.status(404).json({ error: "User not found." });
+    const isValid = await compare(currentPassword, user.password);
+    if (!isValid) return res.status(401).json({ error: "Current password is incorrect." });
+    const salt = await genSalt(10);
+    const hashedPassword = await hash(newPassword, salt);
+    await prisma.user.update({
+      where: { email: user.email },
+      data: { password: hashedPassword },
+    });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to change password." });
   }
 });
 

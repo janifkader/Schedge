@@ -19,6 +19,8 @@ app.use(cors({
   origin: [
     "http://localhost:3000",
     "https://schedge-frontend.bravegrass-308b42ec.australiaeast.azurecontainerapps.io",
+    "https://schedge.dev",
+    "https://www.schedge.dev",
   ],
   credentials: true,
 }));
