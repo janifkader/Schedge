@@ -79,22 +79,15 @@ export function signup(
   });
 }
 
-export function updateUser(
-  name: string,
-  email: string,
-  password: string,
-  phone: string,
-) {
+export function updateUser(name: string, phone: string) {
   return send("PATCH", "/api/user/", {
     name,
-    email,
-    password,
     phone,
   });
 }
 
 export function changePassword(oldPassword: string, newPassword: string) {
-  return send("PATCH", `/api/user/password`, { oldPassword, newPassword });
+  return send("PATCH", `/api/user/password/`, { oldPassword, newPassword });
 }
 
 export function signin(email: string, password: string) {
@@ -103,6 +96,10 @@ export function signin(email: string, password: string) {
 
 export function signout() {
   return send("GET", `/api/signout/`);
+}
+
+export function getUserProfile(email: string) {
+  return send("GET", `/api/users/${email}/`);
 }
 
 export const uploadAvatar = async (file: File) => {

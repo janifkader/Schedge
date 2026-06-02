@@ -149,7 +149,7 @@ export default function Calendars({ params }: { params: Params }) {
             )}
           </div>
           <p className="text-zinc-600 text-sm sm:text-base">
-            View and manage {id ? "team" : "your"} upcoming events and availability
+            View and manage {id ? "your team's" : "your"} upcoming events
           </p>
         </div>
 

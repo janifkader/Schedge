@@ -8,13 +8,17 @@ import {
   DialogActions,
   Button,
   styled,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/Avatar";
 import { getUsers, getUser, createTeam, getTeams, addMember } from '@/api/api';
 import { useRouter } from "next/navigation";
 
 interface User {
   email: string;
   name: string;
+  avatar_url: string;
 }
 
 interface Team {
@@ -27,13 +31,18 @@ interface Team {
 const ConfirmButton = styled(Button)({
   backgroundColor: "#82181a",
   color: "#FFFFFF",
+  padding: "8px 24px",
+  borderRadius: "8px",
+  textTransform: "none",
+  fontWeight: 600,
   "&:hover": { backgroundColor: "#631214" },
 });
 
 const CancelButton = styled(Button)({
-  color: "#82181a",
-  borderColor: "#82181a",
-  "&:hover": { borderColor: "#631214", color: "#631214" },
+  color: "#64748b",
+  borderColor: "#e2e8f0",
+  textTransform: "none",
+  "&:hover": { borderColor: "#cbd5e1", backgroundColor: "#f8fafc" },
 });
 
 export default function Teams() {
@@ -176,186 +185,185 @@ export default function Teams() {
   );
 
   return (
-    <>
-      {/* Add Member Dialog */}
-      <Dialog open={open} onClose={() => { setOpen(false); setNewMembers([]); setDialogSearch(""); setDialogPage(1); }} fullWidth maxWidth="sm" 
-        sx={{ '& .MuiDialog-paper': { overflow: 'visible', }, '& .MuiDialogContent-root': { overflow: 'visible', },}}>
-        <DialogTitle className="bg-zinc-50 border-b border-zinc-200 font-bold text-zinc-800">
-          Add Member to {selectedTeam?.team_name}
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20">
+      {/* Add Member Dialog - Enhanced Styling */}
+      <Dialog 
+        open={open} 
+        onClose={() => { setOpen(false); setNewMembers([]); setDialogSearch(""); setDialogPage(1); }} 
+        fullWidth 
+        maxWidth="xs"
+        sx={{ '& .MuiDialog-paper': { overflow: 'visible', }, '& .MuiDialogContent-root': { overflow: 'visible', },}}
+      >
+        <DialogTitle className="border-b border-slate-100 pb-4">
+          <span className="text-lg font-bold text-slate-800">Add Team Member</span>
+          <p className="text-sm font-normal text-slate-500">Adding to {selectedTeam?.team_name}</p>
         </DialogTitle>
 
-        <DialogContent className="bg-white pt-4">
-          <div className="flex flex-col gap-3 pt-2">
-            {newMembers.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {newMembers.map((m) => (
-                  <div key={m.email} className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-3 py-2 text-black text-sm">
-                    <span className="font-medium">{m.name}</span>
-                    <button type="button" onClick={() => removeNewMember(m.email)} className="text-gray-400 hover:text-red-700 ml-2 text-lg leading-none">×</button>
-                  </div>
-                ))}
+        <DialogContent className="mt-4">
+          <div className="space-y-4">
+            {newMembers.map((m) => (
+              <div key={m.email} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">{m.name}</span>
+                  <span className="text-xs text-slate-500">{m.email}</span>
+                </div>
+                <button onClick={() => removeNewMember(m.email)} className="h-8 w-8 rounded-full hover:bg-red-50 hover:cursor-pointer text-slate-400 hover:text-red-600 transition-colors">×</button>
               </div>
-            )}
+            ))}
 
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search by name..."
+                placeholder="Search by name or email..."
                 value={dialogSearch}
                 disabled={newMembers.length >= 1}
                 onChange={(e) => { setDialogSearch(e.target.value); setDialogPage(1); }}
                 onFocus={() => setDialogSearchFocused(true)}
                 onBlur={() => setTimeout(() => setDialogSearchFocused(false), 150)}
-                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-red-900 transition-colors"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-900/20 focus:border-red-900 outline-none transition-all"
               />
-              {dialogSearchFocused && dialogSearch && dialogUsers.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-lg overflow-hidden">
-                  {dialogUsers.map((user) => (
-                    <button key={user.email} type="button" onMouseDown={() => addNewMember(user)} className="w-full text-left px-3 py-2 text-sm text-black hover:bg-red-50 hover:text-red-900 transition-colors">
-                      <span className="font-medium">{user.name}</span>
-                      <span className="text-gray-400 text-xs ml-2">{user.email}</span>
-                    </button>
-                  ))}
-                  {totalDialogPages > 1 && (
-                    <div className="flex items-center justify-between border-t border-gray-200 px-3 py-1.5 bg-gray-50">
-                      <button type="button" onClick={() => setDialogPage((p) => Math.max(p - 1, 1))} disabled={dialogPage === 1} className="text-xs text-gray-600 disabled:opacity-30">Previous</button>
-                      <span className="text-xs text-gray-500">{dialogPage} / {totalDialogPages}</span>
-                      <button type="button" onClick={() => setDialogPage((p) => Math.min(p + 1, totalDialogPages))} disabled={dialogPage === totalDialogPages} className="text-xs text-gray-600 disabled:opacity-30">Next</button>
-                    </div>
+              {/* Dropdown styling improved */}
+              {dialogSearchFocused && dialogSearch && (
+                <div className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-2 shadow-xl max-h-60 overflow-y-auto">
+                  {dialogUsers.length > 0 ? (
+                    dialogUsers.map((user) => (
+                      <button key={user.email} onMouseDown={() => addNewMember(user)} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0">
+                        <span className="text-sm font-medium text-slate-700">{user.name}</span>
+                        <span className="text-xs text-slate-400">{user.email}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-slate-400">No results found</div>
                   )}
                 </div>
-              )}
-              {dialogSearchFocused && dialogSearch && dialogUsers.length === 0 && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-lg px-3 py-2 text-sm text-gray-400">No users found.</div>
               )}
             </div>
           </div>
         </DialogContent>
-
-        <DialogActions className="bg-zinc-50 border-t border-zinc-200 px-6 py-3">
-          <CancelButton variant="outlined" onClick={() => { setOpen(false); setNewMembers([]); setDialogSearch(""); setDialogPage(1); }} disabled={adding}>Cancel</CancelButton>
-          <ConfirmButton variant="contained" onClick={handleAddMembers} disabled={adding || newMembers.length === 0}>
+        <DialogActions className="p-6 pt-2">
+          <CancelButton onClick={() => setOpen(false)}>Cancel</CancelButton>
+          <ConfirmButton onClick={handleAddMembers} disabled={adding || newMembers.length === 0}>
             {adding ? "Adding..." : "Add Member"}
           </ConfirmButton>
         </DialogActions>
       </Dialog>
 
-      <div className="min-h-screen text-gray-100 p-6 md:p-12">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 pt-12">
+        <header className="mb-10">
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Teams</h1>
+          <p className="text-slate-500 mt-2">Manage your teams.</p>
+        </header>
 
-          {/* Left Column: Create Team Form */}
-          <div className="md:col-span-1 bg-gray-300 p-6 rounded-xl border border-gray-700 h-fit">
-            <h2 className="text-xl font-bold mb-4 text-black">Create a New Team</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-black mb-1">Team Name *</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-black focus:outline-none focus:border-red-900 transition-colors"
-                />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Sidebar: Create Team */}
+          <div className="lg:col-span-4">
+            <div className="bg-gray-300 rounded-2xl shadow-sm border border-slate-200 p-8 sticky top-8">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                Create New Team
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Team Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-red-900 outline-none transition-all"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-black mb-1">Team Members</label>
-                {members.length > 0 && (
-                  <div className="flex flex-col gap-1 mb-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Members</label>
+                  <div className="space-y-2 mb-3">
                     {members.map((m) => (
-                      <div key={m.email} className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-3 py-2 text-black text-sm">
-                        <span className="font-medium">{m.name}</span>
-                        <button type="button" onClick={() => removeMember(m.email)} className="text-gray-400 hover:text-red-700 ml-2 text-lg leading-none">×</button>
+                      <div key={m.email} className="flex items-center justify-between bg-red-50/50 border border-red-100 rounded-lg px-3 py-2">
+                        <span className="text-sm font-medium text-red-900">{m.name}</span>
+                        <button type="button" onClick={() => removeMember(m.email)} className="text-red-400 hover:text-red-600">×</button>
                       </div>
                     ))}
                   </div>
-                )}
-                <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search by name..."
+                    placeholder="Search users..."
                     value={userSearch}
                     onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
                     onFocus={() => setSearchFocused(true)}
                     onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-red-900 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-red-900 outline-none transition-all"
                   />
-                  {searchFocused && userSearch && users.filter((u) => !members.find((m) => m.email === u.email)).length > 0 && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-lg overflow-hidden">
-                      {users.filter((u) => !members.find((m) => m.email === u.email)).map((user) => (
-                        <button key={user.email} type="button" onMouseDown={() => addMemberLocally(user)} className="w-full text-left px-3 py-2 text-sm text-black hover:bg-red-50 hover:text-red-900 transition-colors">
-                          <span className="font-medium">{user.name}</span>
-                          <span className="text-gray-400 text-xs ml-2">{user.email}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
 
-              {error && (
-                <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-200 text-sm">{error}</div>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting || !name.trim()}
-                className="w-full bg-red-900 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-400 font-medium text-white py-2 px-4 rounded-lg transition-colors cursor-pointer"
-              >
-                {submitting ? "Creating..." : "Create Team"}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={submitting || !name.trim()}
+                  className="w-full bg-red-900 cursor-pointer hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:shadow-none"
+                >
+                  {submitting ? "Processing..." : "Create Team"}
+                </button>
+              </form>
+            </div>
           </div>
 
-          {/* Right Column */}
-          <div className="md:col-span-2 space-y-4">
-            <h1 className="text-2xl font-bold text-black mb-2">Teams Directory</h1>
+          {/* Directory Column */}
+          <div className="lg:col-span-8">
             {loading ? (
-              <div className="text-gray-400 animate-pulse py-4">Loading existing teams...</div>
-            ) : teams.length === 0 ? (
-              <div className="bg-red-900 border border-gray-700 p-8 rounded-xl text-center text-white">No teams found.</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1,2,3,4].map(i => <div key={i} className="h-40 bg-slate-200 animate-pulse rounded-2xl"/>)}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {teams.map((team) => (
                   <div
                     key={team.team_id}
                     onClick={() => router.push(`/calendars/${team.team_id}`)}
-                    className="bg-red-900 border border-gray-700 p-5 rounded-xl hover:border-gray-600 hover:bg-red-700 hover:cursor-pointer transition-all flex flex-col justify-between"
+                    className="group bg-red-100 border border-slate-200 p-6 rounded-2xl hover:border-red-200 hover:shadow-xl hover:shadow-red-900/5 transition-all cursor-pointer relative overflow-hidden"
                   >
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1 truncate">{team.team_name}</h3>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {!team.members || team.members.length === 0 ? (
-                          <span className="text-xs text-red-200">No members yet.</span>
-                        ) : (
-                          team.members.map((member) => (
-                            member.email === team.leader_email ? (
-                              <span key={member.email} className="text-xs bg-white text-black px-2 py-1 rounded-full">
-                                Leader: {member.name}
-                              </span>
-                            ) : (
-                              <span key={member.email} className="text-xs bg-red-800 text-white px-2 py-1 rounded-full">
-                                {member.name}
-                              </span>
-                            )
-                          ))
-                        )}
-                        {team.leader_email === userEmail && ( <span
-                          className="text-xs bg-white text-black px-2 py-1 hover:bg-black hover:text-white rounded-full cursor-pointer"
+                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <span className="text-slate-300">→</span>
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-slate-800 mb-4 group-hover:text-red-900 transition-colors">
+                      {team.team_name}
+                    </h3>
+
+                    <div className="flex flex-wrap gap-2">
+                      {team.members?.map((member) => (
+                        <Tooltip key={member.email} title={member.email} onClick={(e) => { e.stopPropagation(); router.push(`/profile/${encodeURIComponent(member.email)}`); }}>
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 ${
+                            member.email === team.leader_email 
+                            ? "bg-red-900 text-white border border-amber-100" 
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                          }`}>
+                            {member.email === team.leader_email}
+                            <Avatar className="h-4 w-4">
+                              <AvatarImage src={member.avatar_url} alt={member.name} />
+                              <AvatarFallback className="bg-slate-300/50 text-[8px] font-bold uppercase leading-none">
+                                {member.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {member.name}
+                          </span>
+                        </Tooltip>
+                      ))}
+                      
+                      {team.leader_email === userEmail && (
+                        <button
                           onClick={(e) => { e.stopPropagation(); setSelectedTeam(team); setOpen(true); }}
+                          className="text-[11px] font-bold bg-white border border-dashed border-slate-300 text-slate-400 px-2.5 py-1 rounded-md hover:cursor-pointer hover:border-red-900 hover:text-red-900 transition-all"
                         >
-                          + Add Member
-                        </span> )}
-                      </div>
+                          + Member
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
         </div>
       </div>
-    </>
+    </div>
   );
 }

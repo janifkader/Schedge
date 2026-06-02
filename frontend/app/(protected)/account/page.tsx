@@ -59,7 +59,7 @@ export default function AccountSettings() {
     setProfileSuccess("");
     try {
       const formattedPhone = phone ? `+1${phone}` : "";
-      await updateUser({ name, formattedPhone });
+      await updateUser(name, formattedPhone);
       setProfileSuccess("Profile updated successfully.");
     } catch (err: any) {
       setProfileError(err.message || "Failed to update profile.");
@@ -82,7 +82,7 @@ export default function AccountSettings() {
     setPasswordError("");
     setPasswordSuccess("");
     try {
-      await changePassword({ currentPassword, newPassword });
+      await changePassword(currentPassword, newPassword);
       setPasswordSuccess("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");
@@ -166,7 +166,7 @@ export default function AccountSettings() {
               }}
               fullWidth
               size="small"
-              inputProps={{ inputMode: "numeric", maxLength: 10 }}
+              slotProps={{ htmlInput: { inputMode: "numeric", maxLength: 10 }}}
             />
             {profileError && <p className="text-red-700 text-sm">{profileError}</p>}
             {profileSuccess && <p className="text-green-700 text-sm">{profileSuccess}</p>}

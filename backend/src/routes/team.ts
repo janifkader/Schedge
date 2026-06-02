@@ -170,6 +170,7 @@ router.get("/", isAuthenticated as any, async (req: Request, res: Response) => {
                 select: {
                   email: true,
                   name: true,
+                  avatar_url: true,
                 }
               }
             }

@@ -395,10 +395,10 @@ router.patch("/user/", isAuthenticated as any, async (req: Request, res: Respons
 router.patch("/user/password/", isAuthenticated as any, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
-    const { currentPassword, newPassword } = req.body;
+    const { oldPassword, newPassword } = req.body;
     const user = await prisma.user.findUnique({ where: { email: authReq.user?.email } });
     if (!user) return res.status(404).json({ error: "User not found." });
-    const isValid = await compare(currentPassword, user.password);
+    const isValid = await compare(oldPassword, user.password);
     if (!isValid) return res.status(401).json({ error: "Current password is incorrect." });
     const salt = await genSalt(10);
     const hashedPassword = await hash(newPassword, salt);
@@ -409,6 +409,41 @@ router.patch("/user/password/", isAuthenticated as any, async (req: Request, res
     return res.status(200).json({ success: true });
   } catch (error) {
     return res.status(500).json({ error: "Failed to change password." });
+  }
+});
+
+// GET /api/users/:email/
+router.get("/users/:email/", async (req: Request, res: Response) => {
+  try {
+    const { email } = req.params as { email: string };
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        name: true,
+        email: true,
+        avatar_url: true,
+        memberships: {
+          include: {
+            team: {
+              select: {
+                team_id: true,
+                team_name: true,
+              }
+            }
+          }
+        }
+      }
+    });
+    if (!user) return res.status(404).json({ error: "User not found." });
+    return res.status(200).json({
+      name: user.name,
+      email: user.email,
+      avatar_url: user.avatar_url,
+      teams: user.memberships.map((m) => m.team),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

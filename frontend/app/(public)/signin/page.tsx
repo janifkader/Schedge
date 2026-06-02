@@ -1,43 +1,39 @@
 "use client";
 
-import { Stack, Button, Typography, TextField, Tooltip } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { signin, resendVerificationEmail } from "@/api/api"
-
-const Title = styled(Typography)(({ theme }) => ({
-  ...theme.typography.h2,
-}));
-
-const Subtitle = styled(Typography)(({ theme }) => ({
-  ...theme.typography.h6,
-  color: theme.palette.grey[800],
-}));
-
-const LoginButton = styled(Button)(({ theme }) => ({
-  ...theme.typography.h5,
-  backgroundColor: "#000000",
-  color: "#FFFFFF",
-  "&:hover": {
-    backgroundColor: theme.palette.grey[800],
-  },
-}));
+import { signin, resendVerificationEmail } from "@/api/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/Card";
+import { Input } from "@/components/Input";
+import { Label } from "@/components/Label";
+import { Button } from "@/components/Button";
+import { Alert, AlertDescription } from "@/components/Alert";
+import { Mail, Lock, AlertCircle, ArrowRight, RefreshCw } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/Tooltip";
 
 export default function Signin() {
-  const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
-  const confirmRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [verified, setVerified] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
   const router = useRouter();
 
   const handleSubmit = async function (e: React.FormEvent<HTMLFormElement>) {
     try {
       e.preventDefault();
+      setIsLoading(true);
       setVerified(true);
+      setErrorMessage("");
+
       const email = emailRef.current?.value?.trim() || "";
       const pass = passRef.current?.value || "";
       await signin(email, pass);
@@ -46,7 +42,7 @@ export default function Signin() {
       console.log(err);
 
       if (err.message) {
-        if (err.message === 'Please verify your account.') {
+        if (err.message === "Please verify your account.") {
           setVerified(false);
         }
         setErrorMessage(err.message);
@@ -55,17 +51,19 @@ export default function Signin() {
       } else {
         setErrorMessage("An unexpected error occurred");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleResend = async function () {
     try {
+      setIsResending(true);
       const email = emailRef.current?.value?.trim() || "";
       setVerified(true);
       await resendVerificationEmail(email);
       setErrorMessage("Verification email resent successfully.");
-    }
-    catch (err: any) {
+    } catch (err: any) {
       console.log(err);
       if (err.message) {
         setErrorMessage(err.message);
@@ -74,64 +72,133 @@ export default function Signin() {
       } else {
         setErrorMessage("An unexpected error occurred");
       }
+    } finally {
+      setIsResending(false);
     }
-  }
+  };
 
   return (
-    <>
-      <Stack
-        data-testid="login-page"
-        sx={{ height: "100vh", textAlign: "center", justifyContent: "center", alignItems: "center" }}
-        spacing={5}
-        component="form"
-        onSubmit={handleSubmit}
-      >
-        <Stack spacing={0.5} sx={{ width: "100%", textAlign: "center" }}>
-          <Title>Create Account</Title>
-          {verified ? ( <Typography color="error">{errorMessage}</Typography> ) : 
-          ( <Tooltip 
-              title="Click to resend verification link" 
-              arrow 
-              placement="top"
-            >
-              <Typography 
-                color="error"
-                onClick={handleResend}
-                sx={{ 
-                  cursor: "pointer", 
-                  display: "inline-block",
-                  "&:hover": {
-                    textDecoration: "underline",
-                    color: "#d32f2f"
-                  }
-                }}
+    <div className="min-h-screen bg-gradient-to-br from-zinc-50 via-zinc-100 to-zinc-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="flex items-center gap-2 justify-center mb-8">
+          <h1 className="text-2xl font-bold text-red-900">Schedge</h1>
+        </div>
+
+        <Card className="shadow-2xl border-zinc-200">
+          <CardHeader className="space-y-1 text-center pb-6">
+            <CardTitle className="text-2xl font-bold text-zinc-900">
+              Welcome Back
+            </CardTitle>
+            <CardDescription className="text-base">
+              Sign in to your account to continue
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <Alert
+                  variant={errorMessage.includes("successfully") ? "default" : "destructive"}
+                  className="animate-in slide-in-from-top-2"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between gap-2">
+                    <span className="flex-1">{errorMessage}</span>
+                    {!verified && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleResend}
+                              disabled={isResending}
+                              className="h-7 px-2 hover:bg-destructive/20"
+                            >
+                              {isResending ? (
+                                <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Resend verification email</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-zinc-700">
+                  <Mail className="h-3.5 w-3.5" />
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  ref={emailRef}
+                  required
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-zinc-700">
+                    <Lock className="h-3.5 w-3.5" />
+                    Password
+                  </Label>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  ref={passRef}
+                  required
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-11 text-base bg-red-900 hover:bg-red-800 text-white mt-6"
+                disabled={isLoading}
               >
-                {errorMessage}
-              </Typography>
-            </Tooltip> 
-          )}
-          <Typography color="red">{errorMessage}</Typography>
-        </Stack>
-        <Stack spacing={2} sx={{ width: "100%", justifyContent: "center", alignItems: "center", textAlign: "center", }}>
-          <TextField size="small" required label="Email" inputRef={emailRef} />
-          <TextField
-            size="small"
-            required
-            label="Password"
-            type="password"
-            inputRef={passRef}
-          />
-        </Stack>
-        <Stack spacing={2} sx={{ width: "100%", alignItems: "center", }}>
-          <LoginButton type="submit">Sign In</LoginButton>
-          <Link
-            href="/signup"
-            className="text-black normal-case hover:text-gray"
-          >
-            Don't have an account? Sign Up.
-          </Link>
-        </Stack>
-      </Stack>
-    </>
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing In...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Sign In
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                )}
+              </Button>
+
+              <div className="text-center pt-2">
+                <p className="text-sm text-zinc-600">
+                  Don't have an account?{" "}
+                  <Link
+                    href="/signup"
+                    className="text-red-900 hover:text-red-800 font-medium hover:underline transition-colors"
+                  >
+                    Sign Up
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
