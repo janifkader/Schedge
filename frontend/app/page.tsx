@@ -1,19 +1,25 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { getUser } from "@/api/api";
 
 export default function Home() {
-  const pathname = usePathname();
-  
-  const linkStyle = (path: string) =>
-    `px-4 py-2 ${
-      pathname == path
-        ? "bg-gray-800 text-white"
-        : " text-gray-600"
-    }`;
+    useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const data = await getUser();
+        if (data?.username) {
+          window.location.href = `/home`
+        }
+      } catch (err: unknown) {
+        window.location.href = `/signin`;
+      }
+    };
+    loadUser();
+  }, []);
   return (
     <div>
-      Welcome
+      Loading...
     </div>
   );
 }

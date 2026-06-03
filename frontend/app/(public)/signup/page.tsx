@@ -36,7 +36,7 @@ export default function Register() {
 
       if (pass !== confirm) throw new Error("Passwords don't match.");
       await signup(name, email, pass, phone);
-      router.push("/calendars");
+      router.push("/home");
     } catch (err: any) {
       console.log(err);
 

@@ -37,7 +37,7 @@ export default function Signin() {
       const email = emailRef.current?.value?.trim() || "";
       const pass = passRef.current?.value || "";
       await signin(email, pass);
-      router.push("/calendars");
+      router.push("/home");
     } catch (err: any) {
       console.log(err);
 

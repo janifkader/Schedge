@@ -60,6 +60,28 @@ export const generateAuthCookies = (email: string) => {
   };
 };
 
+export const generateClearCookies = () => {
+  const clearAccess = serialize("token", "", {
+    path: "/",
+    maxAge: -1,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain: process.env.NODE_ENV === "production" ? ".schedge.dev" : undefined,
+  });
+
+  const clearRefresh = serialize("refresh_token", "", {
+    path: "/api/refresh",
+    maxAge: -1,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain: process.env.NODE_ENV === "production" ? ".schedge.dev" : undefined,
+  });
+
+  return [clearAccess, clearRefresh];
+};
+
 // POST /api/signup/
 router.post(
   "/signup/",
@@ -164,21 +186,20 @@ router.get("/signout/", async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const email = authReq.user?.email;
+    console.log("Signout called for:", email);
+    console.log("NODE_ENV:", process.env.NODE_ENV);
 
     if (email) {
-      await prisma.user.update({ where: { email }, data: { refresh_token: null }, });
+      await prisma.user.update({ where: { email }, data: { refresh_token: null } });
+      console.log("Refresh token cleared in DB");
     }
 
-    const clearAccess = serialize("token", "", { path: "/", maxAge: -1 });
-    const clearRefresh = serialize("refresh_token", "", {
-      path: "/api/refresh",
-      maxAge: -1,
-    });
-
-    res.setHeader("Set-Cookie", [clearAccess, clearRefresh]);
-
+    const cookies = generateClearCookies();
+    console.log("Clear cookies:", cookies);
+    res.setHeader("Set-Cookie", cookies);
     return res.status(200).json({ success: true });
   } catch (error) {
+    console.error("Signout error:", error);
     return res.status(500).json({ error: "Signout failed" });
   }
 });
