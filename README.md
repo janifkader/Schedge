@@ -4,7 +4,7 @@ A full-stack scheduling application built with Next.js and Express, featuring ca
 
 ## Installation
 
-Access the app at [`schedge.dev`](schedge.dev).
+Access the app at [`schedge.dev`](https://schedge.dev/).
 
 ---
 
