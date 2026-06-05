@@ -16,7 +16,7 @@ export default function Calendars({ params }: { params: Params }) {
   const { id: idParam } = use(params);
   const id = idParam?.[0] || null;
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => { const today = new Date(); today.setHours(0, 0, 0, 0); return today; });
   const [schedule, setSchedule] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(true);

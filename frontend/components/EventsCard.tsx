@@ -87,6 +87,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
     const loadEvents = async () => {
       setIsLoading(true);
       try {
+        console.log("LOADING!");
         const data = await getEvents(schedule, dayjs(selectedDate), currentPage, 5);
         setEvents(data.events);
         setTotalPages(data.totalPages);

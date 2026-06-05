@@ -65,6 +65,7 @@ export default function AddEventDialog({
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   };
+  const toUTCString = (localStr: string) => new Date(localStr).toISOString();
 
   const [form, setForm] = useState<NewEvent>(() =>
     existingEvent
@@ -144,7 +145,12 @@ export default function AddEventDialog({
     setError("");
     setLoading(true);
     try {
-      await onSubmit({ ...form, applyToAll });
+      await onSubmit({
+        ...form,
+        start_time: toUTCString(form.start_time),
+        end_time: toUTCString(form.end_time),
+        applyToAll,
+      });
       onClose();
     } 
     catch (err: any) {

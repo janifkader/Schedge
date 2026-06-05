@@ -15,7 +15,7 @@ async function send(
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:4000";
   
   const fullUrl = url.startsWith("http") ? url : `${baseUrl}${url}`;
-
+  console.log("FETCH", fullUrl, "credentials: include");
   const res = await fetch(fullUrl, {
     method,
     headers: {
@@ -110,7 +110,6 @@ export const uploadAvatar = async (file: File) => {
     method: "PUT",
     credentials: "include",
     body: formData,
-    // No Content-Type header — browser sets it automatically with the correct boundary
   });
   if (!res.ok) throw new Error("Failed to upload avatar");
   return res.json();
