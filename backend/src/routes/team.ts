@@ -114,7 +114,20 @@ router.get("/:id/", isAuthenticated as any, async (req: Request, res: Response) 
     const { id } = req.params as { id: string };
     const userEmail = authReq.user?.email;
 
-    const team = await prisma.team.findUnique({ where: { team_id: id } });
+    const team = await prisma.team.findUnique({ 
+      where: { team_id: id },
+      include: {
+          members: {
+            include: {
+              user: {
+                include: {
+                  schedule: true,
+                }
+              }
+            }
+          }
+        }
+    });
 
     return res.status(200).json({
       team
@@ -194,5 +207,134 @@ router.get("/", isAuthenticated as any, async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to fetch expenses" });
   }
 });
+
+// GET /api/team/:team_id/suggestions/?date=...&duration=...
+router.get(
+  "/:team_id/suggestions/",
+  isAuthenticated as any,
+  async (req: Request, res: Response) => {
+    try {
+      const { team_id } = req.params as { team_id: string };
+      const { date, duration } = req.query;
+
+      if (!date || !duration) {
+        return res.status(400).json({ error: "Missing parameters." });
+      }
+
+      const durationMs = parseInt(duration as string) * 60 * 1000;
+      const timezone = parseInt(req.query.timezone as string) || 0;
+
+      const startOfDay = new Date(date as string);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+      const workStart = new Date(startOfDay.getTime() + timezone * 60 * 1000 + 8 * 60 * 60 * 1000);
+      const workEnd = new Date(startOfDay.getTime() + timezone * 60 * 1000 + 20 * 60 * 60 * 1000);
+
+      // Get all team members and their schedules
+      const team = await prisma.team.findUnique({
+        where: { team_id },
+        include: {
+          members: {
+            include: {
+              user: {
+                include: {
+                  schedule: true,
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!team) return res.status(404).json({ error: "Team not found." });
+
+      // Fetch each member's events for the day
+      const memberEvents = await Promise.all(
+        team.members.map(async (m) => {
+          if (!m.user.schedule) return { email: m.user_email, name: m.user.name, events: [] };
+          const events = await prisma.event.findMany({
+            where: {
+              schedule_id: m.user.schedule.sched_id,
+              start_time: { gte: startOfDay, lt: endOfDay },
+            },
+            orderBy: { start_time: "asc" },
+          });
+          return {
+            email: m.user_email,
+            name: m.user.name,
+            events: events.map((e) => ({
+              event_id: e.event_id,
+              title: e.title,
+              start_time: e.start_time,
+              end_time: e.end_time,
+              weight: e.weight,
+            })),
+          };
+        })
+      );
+
+      // Score each candidate slot
+      const step = 30 * 60 * 1000;
+      let cursor = workStart.getTime();
+      const suggestions: {
+        start_time: string;
+        end_time: string;
+        available_members: string[];
+        busy_members: { name: string; conflict: string }[];
+        disruption_score: number;
+      }[] = [];
+
+      while (cursor + durationMs <= workEnd.getTime()) {
+        const slotEnd = cursor + durationMs;
+        const availableMembers: string[] = [];
+        const busyMembers: { name: string; conflict: string }[] = [];
+        let totalDisruption = 0;
+
+        for (const member of memberEvents) {
+          const conflictingEvents = member.events.filter((e) => {
+            return cursor < e.end_time.getTime() && slotEnd > e.start_time.getTime();
+          });
+
+          if (conflictingEvents.length === 0) {
+            availableMembers.push(member.name);
+          } else {
+            // Calculate disruption — sum of weights of conflicting events
+            const disruption = conflictingEvents.reduce((sum, e) => sum + e.weight, 0);
+            totalDisruption += disruption;
+            busyMembers.push({
+              name: member.name,
+              conflict: conflictingEvents.map((e) => e.title).join(", "),
+            });
+          }
+        }
+
+        suggestions.push({
+          start_time: new Date(cursor).toISOString(),
+          end_time: new Date(slotEnd).toISOString(),
+          available_members: availableMembers,
+          busy_members: busyMembers,
+          disruption_score: totalDisruption,
+        });
+
+        cursor += step;
+      }
+
+      // Sort by most available members first, then least disruption
+      suggestions.sort((a, b) => {
+        const availDiff = b.available_members.length - a.available_members.length;
+        if (availDiff !== 0) return availDiff;
+        return a.disruption_score - b.disruption_score;
+      });
+
+      return res.status(200).json({
+        suggestions: suggestions.slice(0, 5),
+        total_members: team.members.length,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Failed to generate team suggestions." });
+    }
+  }
+);
 
 export default router;

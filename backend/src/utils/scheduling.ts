@@ -48,3 +48,46 @@ export const getExistingEvents = async (
     },
   });
 };
+
+// Find latest event that ends before the current one starts
+const latestNonOverlapping = (events: EventInterval[], i: number): number => {
+  for (let j = i - 1; j >= 0; j--) {
+    if (events[j].end_time <= events[i].start_time) return j;
+  }
+  return -1;
+};
+
+export const weightedIntervalSchedule = (events: EventInterval[]): EventInterval[] => {
+  if (events.length === 0) return [];
+
+  // Sort by end time
+  const sorted = [...events].sort((a, b) => 
+    a.end_time.getTime() - b.end_time.getTime()
+  );
+
+  const n = sorted.length;
+  const dp = new Array(n).fill(0);
+  dp[0] = sorted[0].weight;
+
+  for (let i = 1; i < n; i++) {
+    const j = latestNonOverlapping(sorted, i);
+    const includeWeight = sorted[i].weight + (j >= 0 ? dp[j] : 0);
+    dp[i] = Math.max(includeWeight, dp[i - 1]);
+  }
+
+  // Backtrack to find which events are in the optimal set
+  const result: EventInterval[] = [];
+  let i = n - 1;
+  while (i >= 0) {
+    const j = latestNonOverlapping(sorted, i);
+    const includeWeight = sorted[i].weight + (j >= 0 ? dp[j] : 0);
+    if (i === 0 || includeWeight >= dp[i - 1]) {
+      result.push(sorted[i]);
+      i = j;
+    } else {
+      i--;
+    }
+  }
+
+  return result;
+};

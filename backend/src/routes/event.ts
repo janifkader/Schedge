@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import { genSalt, hash, compare } from "bcrypt";
 import { serialize } from "cookie";
-import { getConflicts, getHigherWeightConflicts, getExistingEvents } from "../utils/scheduling";
+import { getConflicts, getHigherWeightConflicts, getExistingEvents, weightedIntervalSchedule, EventInterval } from "../utils/scheduling";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import {
@@ -52,7 +52,7 @@ router.post(
     try {
       const authReq = req as AuthRequest;
       const { sched } = req.params as {sched: string};
-      const { title, start_time, end_time, weight, cycle, span } = req.body;
+      const { title, start_time, end_time, weight, cycle, span, forceCreate } = req.body;
       const userEmail = authReq.user?.email;
       if (!userEmail || !title || !start_time || !end_time || !weight || !cycle || !span || !sched) {
         //console.log(`email: ${userEmail}, title: ${title}, date: ${date}, weight: ${weight}, cycle: ${cycle}, span: ${span}, sched: ${sched}`);
@@ -70,7 +70,25 @@ router.post(
       const existing = await getExistingEvents(sched, baseStart, baseEnd);
       const conflicts = getHigherWeightConflicts({ start_time: baseStart, end_time: baseEnd, weight }, existing);
 
-      if (conflicts.length > 0) {
+      if (conflicts.length > 0 && !forceCreate) {
+        const allEvents = existing.map((e) => ({
+          event_id: e.event_id,
+          title: e.title,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          weight: e.weight,
+        }));
+        const newEvent = { event_id: "new", title, start_time: baseStart, end_time: baseEnd, weight };
+        const currentOptimal = weightedIntervalSchedule(allEvents);
+        const currentScore = currentOptimal.reduce((sum, e) => sum + e.weight, 0);
+        const resolutions = conflicts.map((conflict: EventInterval) => {
+          const noConflict = [ ...allEvents.filter((e) => e.event_id != conflict.event_id), newEvent];
+          const newOptimal = weightedIntervalSchedule(noConflict);
+          const newScore = newOptimal.reduce((sum, e) => sum + e.weight, 0);
+          return { event_id: conflict.event_id, title: conflict.title, weight: conflict.weight, preScore: currentScore, postScore: newScore, change: newScore - currentScore };
+        });
+
+        resolutions.sort((a,b) => b.change = a.change);
         return res.status(409).json({
           error: "Conflicts with higher or equal weight events.",
           conflicts: conflicts.map((c) => ({
@@ -80,6 +98,8 @@ router.post(
             end_time: c.end_time,
             weight: c.weight,
           })),
+          warning: true,
+          resolutions
         });
       }
 
@@ -329,15 +349,58 @@ router.get("/:schedule/", isAuthenticated as any, async (req: Request, res: Resp
         orderBy: {
           start_time: 'asc',
         },
+        include: {
+          participants: {
+            include: {
+              user: {
+                select: {
+                  email: true,
+                  name: true,
+                  avatar_url: true,
+                }
+              }
+            }
+          }
+        }
       }),
     ]);
 
     console.log(rows);
 
+    const optimalSet = weightedIntervalSchedule(
+      rows.map((e) => ({
+        event_id: e.event_id,
+        title: e.title,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        weight: e.weight,
+      }))
+    );
+
+    const optimalIds = new Set(optimalSet.map((e) => e.event_id));
+
+    const eventsWithOptimal = rows.map((e) => {
+      const owner = e.participants.find((p) => p.user_email === userEmail)
+        ?? e.participants[0];
+
+      return {
+        ...e,
+        isOptimal: optimalIds.has(e.event_id),
+        owner: owner ? {
+          email: owner.user?.email,
+          name: owner.user?.name,
+          avatar_url: owner.user?.avatar_url,
+        } : null,
+        isShared: e.schedule_id !== schedule, // true if event came from a participant, not the schedule
+      };
+    });
+
     return res.status(200).json({
-      events: rows,
+      events: eventsWithOptimal,
       total: count,
       totalPages: Math.ceil(count / limit),
+      optimalScore: optimalSet.reduce((sum, e) => sum + e.weight, 0),
+      totalScore: rows.reduce((sum, e) => sum + e.weight, 0),
     });
   } catch (error) {
     console.error(error);
@@ -419,5 +482,140 @@ router.delete("/:event_id/", isAuthenticated as any, async (req: Request, res: R
     return res.status(500).json({ error: "Failed to delete event" });
   }
 });
+
+// GET /api/event/:sched/suggestions/?date=...&duration=...&weight=...
+router.get(
+  "/:sched/suggestions/",
+  isAuthenticated as any,
+  async (req: Request, res: Response) => {
+    try {
+      const { sched } = req.params as { sched: string };
+      const { date, duration, weight } = req.query;
+
+      if (!date || !duration || !weight) {
+        return res.status(400).json({ error: "Missing parameters." });
+      }
+
+      const durationMs = parseInt(duration as string) * 60 * 1000;
+      const baseWeight = parseInt(weight as string);
+
+      const startOfDay = new Date(date as string);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+      const existingEvents = await prisma.event.findMany({
+        where: {
+          schedule_id: sched,
+          start_time: { gte: startOfDay, lt: endOfDay },
+        },
+        orderBy: { start_time: "asc" },
+      });
+
+      const timezone = parseInt(req.query.timezone as string) || 0;
+      const workStart = new Date(startOfDay.getTime() + timezone * 60 * 1000 + 8 * 60 * 60 * 1000);
+      const workEnd = new Date(startOfDay.getTime() + timezone * 60 * 1000 + 20 * 60 * 60 * 1000);
+
+      const step = 30 * 60 * 1000;
+      let cursor = workStart.getTime();
+      let slotId = 0;
+
+      type Slot = {
+        id: number;
+        start: number;
+        end: number;
+        weight: number;
+        isoStart: string;
+        isoEnd: string;
+      };
+
+      const freeSlots: Slot[] = [];
+
+      while (cursor + durationMs <= workEnd.getTime()) {
+        const currentEnd = cursor + durationMs;
+
+        const conflict = existingEvents.some((event) => {
+          const evStart = event.start_time.getTime();
+          const evEnd = event.end_time.getTime();
+          return cursor < evEnd && currentEnd > evStart;
+        });
+
+        if (!conflict) {
+          const target = new Date(cursor);
+          const hour = target.getUTCHours();
+
+          let modifier = 1.0;
+          if (hour >= 9 && hour <= 12) modifier = 1.3;
+          if (hour >= 13 && hour <= 14) modifier = 0.8;
+
+          freeSlots.push({
+            id: slotId++,
+            start: cursor,
+            end: currentEnd,
+            weight: Math.round(baseWeight * modifier),
+            isoStart: new Date(cursor).toISOString(),
+            isoEnd: new Date(currentEnd).toISOString(),
+          });
+        }
+        cursor += step;
+      }
+
+      if (freeSlots.length === 0) {
+        return res.status(200).json({ suggestions: [], message: "No slots found." });
+      }
+
+      freeSlots.sort((x, y) => x.end - y.end);
+      const n = freeSlots.length;
+
+      const p: number[] = new Array(n).fill(-1);
+      for (let i = 0; i < n; i++) {
+        for (let j = i - 1; j >= 0; j--) {
+          if (freeSlots[j].end <= freeSlots[i].start) {
+            p[i] = j;
+            break;
+          }
+        }
+      }
+
+      const M: number[] = new Array(n + 1).fill(0);
+      for (let i = 1; i <= n; i++) {
+        const curWeight = freeSlots[i - 1].weight;
+        const prevIdx = p[i - 1];
+        const incWeight = curWeight + (prevIdx !== -1 ? M[prevIdx + 1] : 0);
+        const exWeight = M[i - 1];
+        M[i] = Math.max(incWeight, exWeight);
+      }
+
+      const candidates: Slot[] = [];
+      let i = n;
+      while (i > 0) {
+        const curWeight = freeSlots[i - 1].weight;
+        const prevIdx = p[i - 1];
+        const incWeight = curWeight + (prevIdx !== -1 ? M[prevIdx + 1] : 0);
+        const exWeight = M[i - 1];
+
+        if (incWeight >= exWeight) {
+          candidates.push(freeSlots[i - 1]);
+          i = prevIdx !== -1 ? prevIdx + 1 : 0;
+        } else {
+          i--;
+        }
+      }
+
+      candidates.reverse();
+
+      const suggestions = candidates.slice(0, 3).map((slot) => ({
+        start_time: slot.isoStart,
+        end_time: slot.isoEnd,
+        score_weight: slot.weight,
+        slot_duration: parseInt(duration as string),
+      }));
+
+      return res.status(200).json({ suggestions });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Failed to generate suggestions." });
+    }
+  }
+);
 
 export default router;
