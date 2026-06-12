@@ -12,6 +12,7 @@ import {
 } from "../middleware/middleware";
 import { prisma } from "../database";
 import { Prisma } from "@prisma/client";
+import { createEvents, EventAttributes } from "ics";
 
 const router = express.Router();
 
@@ -119,5 +120,66 @@ router.get("/:team/", isAuthenticated as any, async (req: Request, res: Response
     return res.status(500).json({ error: "Failed to fetch schedule" });
   }
 });
+
+// GET /api/schedule/:sched/export/?date=...
+router.get("/:sched/export/", isAuthenticated as any,
+  async (req: Request, res: Response) => {
+    try {
+      const { sched } = req.params as { sched: string };
+      const { date } = req.query;
+
+      const whereClause: any = { schedule_id: sched };
+
+      if (date) {
+        const startOfDay = new Date(date as string);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+        whereClause.start_time = { gte: startOfDay, lt: endOfDay };
+      }
+
+      const events = await prisma.event.findMany({
+        where: whereClause,
+        orderBy: { start_time: "asc" },
+      });
+
+      const icsEvents: EventAttributes[] = events.map((e) => {
+        const start = new Date(e.start_time);
+        const end = new Date(e.end_time);
+        return {
+          uid: e.event_id,
+          title: e.title,
+          start: [
+            start.getUTCFullYear(),
+            start.getUTCMonth() + 1,
+            start.getUTCDate(),
+            start.getUTCHours(),
+            start.getUTCMinutes(),
+          ],
+          end: [
+            end.getUTCFullYear(),
+            end.getUTCMonth() + 1,
+            end.getUTCDate(),
+            end.getUTCHours(),
+            end.getUTCMinutes(),
+          ],
+          recurrenceRule: e.cycle !== "None" ? `FREQ=${e.cycle.toUpperCase()}` : undefined,
+        };
+      });
+
+      const { error, value } = createEvents(icsEvents);
+
+      if (error || !value) {
+        return res.status(500).json({ error: "Failed to generate ICS file." });
+      }
+
+      res.setHeader("Content-Type", "text/calendar;charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="schedge-export.ics"`);
+      return res.send(value);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Failed to export events." });
+    }
+  }
+);
 
 export default router;
