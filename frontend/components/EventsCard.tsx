@@ -19,6 +19,13 @@ type ScheduledEvent = {
   weight: number;
   cycle: string;
   span: string;
+  isOptimal: string;
+  isShared: boolean;
+  owner: {
+    email: string;
+    name: string;
+    avatar_url: string | null;
+  } | null;
 };
 
 const AddButton = styled(Button)(({ theme }) => ({
@@ -43,6 +50,9 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [open, setOpen] = useState(false);
+  const [showOptimal, setShowOptimal] = useState(false);
+  const [optimalScore, setOptimalScore] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
   const [update, setUpdate] = useState(0);
   const [editingEvent, setEditingEvent] = useState<ScheduledEvent | null>(null);
 
@@ -91,6 +101,8 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
         const data = await getEvents(schedule, dayjs(selectedDate), currentPage, 5);
         setEvents(data.events);
         setTotalPages(data.totalPages);
+        setOptimalScore(data.optimalScore);
+        setTotalScore(data.totalScore);
       } catch (error) {
         console.error("Failed to fetch events", error);
       } finally {
@@ -107,6 +119,10 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
 
   const goToNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+
+  const displayedEvents = showOptimal
+  ? events.filter((e) => e.isOptimal)
+  : events;
 
   // UI STATE 1: No date selected yet
   if (!selectedDate) {
@@ -144,6 +160,23 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
             {format(selectedDate, "MMMM d, yyyy")}
           </p>
         </div>
+         <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => setShowOptimal((prev) => !prev)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer border transition-colors ${
+              showOptimal
+                ? "bg-red-900 text-white border-red-900"
+                : "bg-white text-zinc-600 border-zinc-300 hover:border-red-900"
+            }`}
+          >
+            {showOptimal ? "Optimal View" : "All Events"}
+          </button>
+          {totalScore > 0 && (
+            <span className="text-xs text-zinc-400">
+              Score: {Math.round(optimalScore/totalScore*100)}%
+            </span>
+          )}
+        </div>
         <div>
           <AddButton onClick={() => setOpen(true)}>+ Add Event</AddButton>
           {/* Add Event Dialog */}
@@ -152,6 +185,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
             onClose={() => setOpen(false)}
             onSubmit={handleAddEvent}
             selectedDate={selectedDate}
+            schedule={schedule}
           />
 
           {/* Edit Event Dialog */}
@@ -160,6 +194,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
             onClose={() => setEditingEvent(null)}
             onSubmit={handleEditEvent}
             selectedDate={selectedDate}
+            schedule={schedule}
             existingEvent={editingEvent ?? undefined}
           />
         </div>
@@ -176,30 +211,58 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
           </div>
         ) : (
           <ul className="space-y-3">
-            {events.map((event) => (
+            {displayedEvents.map((event) => (
               <li
                 key={event.event_id}
                 onClick={() => setEditingEvent(event)}
-                className="group flex flex-col p-4 border border-zinc-100 rounded-lg hover:border-red-900 hover:shadow-md transition-all duration-200 cursor-pointer"
+                className={`group flex flex-col p-4 border rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer ${
+                  event.isOptimal
+                    ? "border-red-900 bg-red-50/30"
+                    : event.isShared
+                    ? "border-l-4 border-l-blue-400 border-zinc-100"
+                    : "border-zinc-100"
+                }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-semibold text-zinc-800">
-                    {event.title}
-                  </span>
-                 <IconButton 
-                  size="small" 
-                  onClick={(e) => { e.stopPropagation(); handleDelete(event.event_id); }}
-                  sx={{ 
-                    borderRadius: '0px',
-                    border: '2px solid transparent',
-                    color: '#6b7280', 
-                    '&:hover': { color: '#fff', backgroundColor: '#dc2626', borderColor: '#dc2626' } 
-                  }}> <ClearIcon/> </IconButton>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-zinc-800">{event.title}</span>
+                    {event.isShared && event.owner && (
+                      <div className="flex items-center gap-1">
+                        {event.owner.avatar_url ? (
+                          <img
+                            src={event.owner.avatar_url}
+                            className="w-4 h-4 rounded-full object-cover"
+                            alt={event.owner.name}
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-blue-400 flex items-center justify-center text-white text-[8px] font-bold">
+                            {event.owner.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs text-red-900">{event.owner.name}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {event.isOptimal && (
+                      <span className="text-xs bg-red-900 text-white px-2 py-0.5 rounded-full">
+                        ★ Optimal
+                      </span>
+                    )}
+                    <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
+                      W{event.weight}
+                    </span>
+                    <IconButton
+                      sx={{ '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.1)' } }}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(event.event_id); }}
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </div>
                 </div>
-                
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-zinc-600 font-medium">
-                    {new Date(event.start_time).toLocaleDateString()}, {formatTime(event.start_time)} to {new Date(event.end_time).toLocaleDateString()}, {formatTime(event.end_time)}
+                    {formatTime(event.start_time)} – {formatTime(event.end_time)}
                   </span>
                 </div>
               </li>

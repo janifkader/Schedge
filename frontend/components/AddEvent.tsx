@@ -12,12 +12,14 @@ import {
   MenuItem,
   styled,
 } from "@mui/material";
+import { getScheduleSuggestions, deleteEvent } from '@/api/api';
 
 type AddEventDialogProps = {
   open: boolean;
   onClose: () => void;
   onSubmit: (event: NewEvent) => Promise<void>;
   selectedDate: Date;
+  schedule: string;
   existingEvent?: {
     event_id: string;
     title: string;
@@ -37,7 +39,17 @@ export type NewEvent = {
   cycle: string;
   span: string;
   applyToAll?: boolean;
+  forceCreate?: boolean;
 };
+
+type Resolution = {
+  event_id: string;
+  title: string;
+  weight: number;
+  preScore: number;
+  postScore: number;
+  change: number;
+}
 
 const ConfirmButton = styled(Button)({
   backgroundColor: "#82181a",
@@ -58,6 +70,7 @@ export default function AddEventDialog({
   onClose,
   onSubmit,
   selectedDate,
+  schedule,
   existingEvent,
 }: AddEventDialogProps) {
   const isEditing = !!existingEvent;
@@ -88,7 +101,31 @@ export default function AddEventDialog({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
+  const [suggestions, setSuggestions] = useState<{ start_time: string; end_time: string; slot_duration: number }[]>([]);
+  const [resolutions, setResolutions] = useState<Resolution[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  const fetchSuggestions = async () => {
+    if (!schedule) return;
+    setLoadingSuggestions(true);
+    try {
+      const durationMs = new Date(form.end_time).getTime() - new Date(form.start_time).getTime();
+      const durationMinutes = Math.max(30, durationMs / 60000);
+      const res = await getScheduleSuggestions(
+        schedule,
+        new Date(form.start_time).toISOString(),
+        durationMinutes,
+        form.weight
+      );
+      setSuggestions(res.suggestions || []);
+    } catch (err) {
+      console.error("Failed to fetch suggestions", err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -130,7 +167,14 @@ export default function AddEventDialog({
     });
   };
 
-  const handleSubmit = async () => {
+  const handleReschedule = async function () {
+    resolutions.forEach(async function (res: Resolution) {
+      await deleteEvent(res.event_id);
+    });
+    handleSubmit(true);
+  };
+
+  const handleSubmit = async (forceCreate: boolean = false) => {
     if (form.cycle !== "None") {
       const spanRegex = /^\d+\s(Weeks|Months|Years)$/;
       if (!spanRegex.test(form.span)) {
@@ -150,13 +194,24 @@ export default function AddEventDialog({
         start_time: toUTCString(form.start_time),
         end_time: toUTCString(form.end_time),
         applyToAll,
+        forceCreate,
       });
       onClose();
     } 
     catch (err: any) {
       if (err.conflicts) {
         setError(`Conflicts with: ${err.conflicts.map((c: any) => `${c.title} (weight ${c.weight})`).join(", ")}`);
-      } else {
+        if (err.warning) {
+          setWarning(true);
+        }
+        if (err.resolutions) {
+          setResolutions(err.resolutions);
+        }
+      }
+      else if (err.message) {
+        setError(err.message);
+      } 
+      else {
         setError("Failed to create event. Please try again.");
       }
       console.log(err);
@@ -200,6 +255,50 @@ export default function AddEventDialog({
             fullWidth
             slotProps={{ inputLabel: { shrink: true } }}
           />
+
+          {!isEditing && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-zinc-600 font-medium">Suggested Time Slots</span>
+                <button
+                  type="button"
+                  onClick={fetchSuggestions}
+                  disabled={loadingSuggestions}
+                  className="text-xs text-red-900 cursor-pointer hover:underline disabled:opacity-50"
+                >
+                  {loadingSuggestions ? "Finding slots..." : "Find Slots"}
+                </button>
+              </div>
+
+              {suggestions.length === 0 && !loadingSuggestions && (
+                <p className="text-xs text-zinc-400">
+                  Click "Find Slots" to see available times for this day.
+                </p>
+              )}
+
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setForm((prev) => ({
+                    ...prev,
+                    start_time: new Date(s.start_time).toISOString().slice(0, 16),
+                    end_time: new Date(s.end_time).toISOString().slice(0, 16),
+                  }))}
+                  className="text-left cursor-pointer px-3 py-2 rounded-lg border border-zinc-200 hover:border-red-900 hover:bg-red-50 transition-colors text-sm"
+                >
+                  <span className="font-medium text-zinc-800">
+                    {new Date(s.start_time).toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                    {" – "}
+                    {new Date(s.end_time).toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </span>
+                  <span className="text-zinc-400 text-xs ml-2">
+                    {Math.round(s.slot_duration)} min available
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Cleanly tracks weight through your custom NumberField component hooks */}
           <NumberField 
@@ -264,6 +363,21 @@ export default function AddEventDialog({
           {error && form.title.trim() && form.cycle === 'None' && (
             <p className="text-red-700 text-sm">{error}</p>
           )}
+
+          {warning && form.title.trim() && form.cycle === 'None' && (
+            <ConfirmButton variant="contained" onClick={() => { handleSubmit(true) }} disabled={loading}>Add Anyway</ConfirmButton>
+          )}
+          {resolutions.length > 0 && (
+            <>
+              Reschedule Recommendations:
+              {resolutions.map((res) => (
+                <span key={res.event_id} className="font-medium text-zinc-800">
+                  Delete <span className="font-bold italic">{res.title}</span> of weight <span className="font-bold italic">{res.weight}</span>. Previous Score: <span className="font-bold italic">{res.preScore}</span>, New Score: <span className="font-bold italic">{res.postScore}</span>
+                </span>
+              ))}
+              <ConfirmButton variant="contained" onClick={handleReschedule} disabled={loading}>Reschedule and Add Event</ConfirmButton>
+            </>
+          )}
         </div>
       </DialogContent>
 
@@ -271,7 +385,7 @@ export default function AddEventDialog({
         <CancelButton variant="outlined" onClick={onClose} disabled={loading}>
           Cancel
         </CancelButton>
-        <ConfirmButton variant="contained" onClick={handleSubmit} disabled={loading}>
+        <ConfirmButton variant="contained" onClick={() => { handleSubmit(false) }} disabled={loading}>
           {loading ? (isEditing ? "Saving..." : "Adding...") : (isEditing ? "Save Changes" : "Add Event")}
         </ConfirmButton>
       </DialogActions>

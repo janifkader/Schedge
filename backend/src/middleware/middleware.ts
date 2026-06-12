@@ -3,6 +3,7 @@ import { body, validationResult, param, query } from "express-validator";
 import jwt, { TokenExpiredError } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 import { prisma } from "../database";
+import { redis } from "../services/redis";
 
 export interface UserPayload {
   email: string;
@@ -39,6 +40,20 @@ export const isAuthenticated = async (
   }
 
   try {
+    const tokenSignature = token.split(".").pop() || token.slice(-30);
+    const cacheKey = `auth:token:${tokenSignature}`;
+    const cachedUser = await redis.get<UserPayload & { is_verified: boolean }>(cacheKey);
+    if (cachedUser) {
+      if (!cachedUser.is_verified) {
+        return res.status(403).json({ 
+          error: "Please verify your email before performing this action.",
+          code: "EMAIL_UNVERIFIED"
+        });
+      }
+      req.user = cachedUser;
+      return next();
+    }
+
     const decoded = jwt.verify(token, JWT_SECRET) as UserPayload;
     req.user = decoded;
 
@@ -57,6 +72,16 @@ export const isAuthenticated = async (
         code: "EMAIL_UNVERIFIED"
       });
     }
+
+    const sessionData = {
+      email: decoded.email,
+      name: decoded.name,
+      is_verified: dbUser.is_verified
+    };
+
+    req.user = sessionData;
+    await redis.set(cacheKey, sessionData, { ex: 900 });
+
     next();
   } catch (error) {
     if (error instanceof TokenExpiredError) {

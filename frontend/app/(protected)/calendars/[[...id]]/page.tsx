@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { CalendarDays, AlertCircle, Users } from "lucide-react";
-import { getUser, getCalendar, getTeam } from "@/api/api";
+import { getUser, getCalendar, getTeam, exportEvents } from "@/api/api";
 import Calender from "../../../../components/Calendar";
 import EventsCard from "../../../../components/EventsCard";
 import { use } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../../components/Card";
 import { Skeleton } from "../../../../components/Skeleton";
 import { Badge } from "../../../../components/Badge";
+import TeamSuggestion from "@/components/TeamSuggestion";
+import dayjs from "dayjs";
 
 type Params = Promise<{ id?: string[] }>;
 
@@ -21,9 +23,20 @@ export default function Calendars({ params }: { params: Params }) {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [teamSuggestionsOpen, setTeamSuggestionsOpen] = useState(false);
+  const [teamTotalMembers, setTeamTotalMembers] = useState(0);
+
+  const handleExport = async () => {
+    try {
+      await exportEvents(schedule, dayjs(selectedDate).toISOString());
+    } catch (err) {
+      console.error("Export failed", err);
+    }
+  };
 
   useEffect(() => {
     (async () => {
+      console.log(schedule);
       setIsLoading(true);
       setError(null);
       try {
@@ -35,6 +48,7 @@ export default function Calendars({ params }: { params: Params }) {
           console.log(res);
           if (res && res.team && res.team.team_name) {
             n = res.team.team_name;
+            setTeamTotalMembers(res.team.members.length);
           }
         } else {
           cal = await getCalendar();
@@ -45,6 +59,7 @@ export default function Calendars({ params }: { params: Params }) {
         }
         if (cal) {
           setSchedule(cal.schedule?.sched_id || "");
+          console.log(cal.schedule?.sched_id || "Bye");
         }
         console.log(n);
         if (n) {
@@ -194,6 +209,32 @@ export default function Calendars({ params }: { params: Params }) {
               <EventsCard selectedDate={selectedDate} schedule={schedule} />
             </CardContent>
           </Card>
+
+          {id && (
+            <>
+              <button
+                onClick={() => setTeamSuggestionsOpen(true)}
+                className="text-sm bg-red-900 cursor-pointer hover:bg-red-800 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Find Meeting Time
+              </button>
+
+              <TeamSuggestion
+                open={teamSuggestionsOpen}
+                onClose={() => setTeamSuggestionsOpen(false)}
+                teamId={id}
+                selectedDate={selectedDate}
+                totalMembers={teamTotalMembers}
+              />
+            </>
+          )}
+
+          <button
+            onClick={handleExport}
+            className="text-xs text-zinc-500 border cursor-pointer border-zinc-300 hover:border-red-900 hover:text-red-900 px-3 py-1.5 rounded-full transition-colors"
+          >
+            Export Calendar to .ics
+          </button>
         </div>
       </div>
     </div>

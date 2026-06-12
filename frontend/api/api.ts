@@ -33,7 +33,7 @@ async function send(
 
   // Keep your local conflict handling logic
   if (res.status === 409) {
-    throw { conflicts: json.conflicts, message: json.error };
+    throw { conflicts: json.conflicts, message: json.error, warning: json.warning, resolutions: json.resolutions };
   }
 
   if (res.status === 401 && !isRetry) {
@@ -173,9 +173,10 @@ export function getEvents(
   return send("GET", url);
 }
 
-export function addExpense(name: string, amount: number, category: string, date: Date, isPaid: boolean = false) {
-  return send("POST", `/api/expense/`, { name, amount, category, date, isPaid });
-}
+export function getScheduleSuggestions (scheduleId: string, date: string, durationMinutes: number, weight: number) {
+  const offset = new Date().getTimezoneOffset();
+  return send("GET", `/api/event/${scheduleId}/suggestions/?date=${date}&duration=${durationMinutes}&weight=${weight}&timezone=${offset}`);
+};
 
 export function patchRequest(id: string, status: string, last_updated: Dayjs) {
   return send("PATCH", `/api/request/${id}/`, { status, last_updated });
@@ -185,71 +186,8 @@ export function resendVerificationEmail(email: string) {
   return send("GET", `/api/resend/${email}/`);
 }
 
-export function addSubscription(
-  name: string,
-  amount: number,
-  date: Date,
-  billingCycle: string,
-  nextRenewalDate: Date,
-) {
-  return send("POST", `/api/subscription/`, {
-    name,
-    amount,
-    date,
-    billingCycle,
-    nextRenewalDate,
-  });
-}
-
-export function editSubscription(
-  id: number,
-  name: string,
-  amount: number,
-  date: Date,
-  billingCycle: string,
-  nextRenewalDate: Date,
-  mode: string | null,
-) {
-  return send("PUT", `/api/subscription/${id}/`, {
-    name,
-    amount,
-    date,
-    billingCycle,
-    nextRenewalDate,
-    mode,
-  });
-}
-
 export function verifyEmail(token: string) {
   return send("GET", `/api/verify/?token=${token}`);
-}
-
-export function deleteSubscription(id: string) {
-  return send("DELETE", `/api/subscription/${id}/`);
-}
-
-export function getExpenses(startDate?: Dayjs | null, endDate?: Dayjs | null, page: number = 1, limit: number = 1000, filter?: string) {
-  const params = new URLSearchParams();
-
-  if (startDate) {
-    params.append("start", startDate.toISOString());
-  }
-
-  if (endDate) {
-    params.append("end", endDate.toISOString());
-  }
-
-  if (filter) {
-    params.append("filter", filter);
-  }
-
-  params.append('page', page.toString());
-  params.append('limit', limit.toString());
-
-  const queryString = params.toString();
-  const url = queryString ? `/api/expense/?${queryString}` : `/api/expense`;
-
-  return send("GET", url);
 }
 
 export function createTeam(team_name: string, members: User[]) {
@@ -271,6 +209,15 @@ export function getRequests(page: number = 1, limit: number = 1000) {
   params.append('limit', limit.toString());
   const queryString = params.toString();
   const url = queryString ? `/api/request/?${queryString}` : `/api/request`;
+  return send("GET", url);
+}
+
+export function getTeamSuggestions(team_id: string, date: string, duration: number) {
+  const params = new URLSearchParams();
+  params.append('date', date.toString());
+  params.append('duration', duration.toString());
+  const queryString = params.toString();
+  const url = queryString ? `/api/team/${team_id}/suggestions/?${queryString}` : `/api/team/suggestions/${team_id}/`;
   return send("GET", url);
 }
 
@@ -297,3 +244,24 @@ export function getUsers(page: number = 1, limit: number = 1000, search?: string
   const url = queryString ? `/api/users/?${queryString}` : `/api/users/`;
   return send("GET", url);
 }
+
+export async function exportEvents (scheduleId: string, date?: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:4000";
+  const url = date
+    ? `${baseUrl}/api/schedule/${scheduleId}/export/?date=${date}`
+    : `${baseUrl}/api/schedule/${scheduleId}/export/`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!res.ok) throw new Error("Failed to export events");
+
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "schedge-export.ics";
+  link.click();
+  URL.revokeObjectURL(link.href);
+};

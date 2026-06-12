@@ -16,6 +16,7 @@ import { Prisma } from "@prisma/client";
 import { sendVerificationEmail } from "../services/email";
 import multer from "multer";
 import { uploadAvatar } from "../services/profile";
+import { redis } from "../services/redis";
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -186,20 +187,22 @@ router.get("/signout/", async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const email = authReq.user?.email;
-    console.log("Signout called for:", email);
-    console.log("NODE_ENV:", process.env.NODE_ENV);
+
+    const token = req.cookies?.token;
+    if (token) {
+      const tokenSignature = token.split(".").pop() || token.slice(-30);
+      const cacheKey = `auth:token:${tokenSignature}`;
+      await redis.del(cacheKey);
+    }
 
     if (email) {
       await prisma.user.update({ where: { email }, data: { refresh_token: null } });
-      console.log("Refresh token cleared in DB");
     }
 
     const cookies = generateClearCookies();
-    console.log("Clear cookies:", cookies);
     res.setHeader("Set-Cookie", cookies);
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Signout error:", error);
     return res.status(500).json({ error: "Signout failed" });
   }
 });
