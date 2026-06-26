@@ -293,6 +293,28 @@ export default function Teams() {
                     onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-red-900 outline-none transition-all"
                   />
+                  {searchFocused && userSearch && users.length > 0 && (
+                    <div className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-2 shadow-xl max-h-60 overflow-y-auto">
+                      {users
+                        .filter((u) => !members.find((m) => m.email === u.email))
+                        .map((user) => (
+                          <button
+                            key={user.email}
+                            type="button"
+                            onMouseDown={() => addMemberLocally(user)}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
+                          >
+                            <span className="text-sm font-medium text-slate-700">{user.name}</span>
+                            <span className="text-xs text-slate-400">{user.email}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                  {searchFocused && userSearch && users.length === 0 && (
+                    <div className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-2 shadow-xl p-4 text-center text-sm text-slate-400">
+                      No results found
+                    </div>
+                  )}
                 </div>
 
                 <button

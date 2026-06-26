@@ -7,6 +7,7 @@ import { redis } from "../services/redis";
 
 export interface UserPayload {
   email: string;
+  name: string;
 }
 
 export interface AuthRequest extends Request {

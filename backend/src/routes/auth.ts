@@ -276,34 +276,28 @@ router.get("/users/", async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
+    let users: { email: string; name: string }[];
+    let totalCount: number;
 
-    const whereClause = search
-      ? {
-          name: {
-            contains: search,
-            mode: 'insensitive' as const,
-          },
-        }
-      : {};
-
-    const [users, totalCount] = await Promise.all([
-      prisma.user.findMany({
-        where: whereClause,
-        select: {
-          email: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-        skip: skip,
-        take: limit,
-      }),
-      prisma.user.count({ where: whereClause }),
-    ]);
+    if (search) {
+      users = await prisma.$queryRaw<{ email: string; name: string }[]>`
+        SELECT email, name FROM search_names(${search}) LIMIT ${limit} OFFSET ${skip}
+      `;
+      totalCount = users.length;
+    }
+    else{
+      [users, totalCount] = await Promise.all([
+        prisma.user.findMany({
+          select: { email: true, name: true },
+          orderBy: { name: "asc" },
+          skip,
+          take: limit
+        }),
+        prisma.user.count(),
+      ]);
+    }
 
     const totalPages = Math.ceil(totalCount / limit);
-    const hasMore = page < totalPages;
 
     return res.status(200).json({
       users,
