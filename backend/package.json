@@ -68,6 +68,9 @@
     "vitest": "^4.1.0"
   },
   "overrides": {
+    "multer-storage-cloudinary": {
+      "cloudinary": "$cloudinary"
+    },
     "tar": "^7.4.3"
   }
 }
