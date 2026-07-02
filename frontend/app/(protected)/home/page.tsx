@@ -119,13 +119,14 @@ export default function Home() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Today's Events", value: todayEvents.length, icon: <Calendar className="w-5 h-5" />, href: "/calendars" },
-            { label: "Teams", value: teams.length, icon: <Users className="w-5 h-5" />, href: "/teams" },
-            { label: "Pending Requests", value: requests.length, icon: <FileText className="w-5 h-5" />, href: "/requests" },
-            { label: "Next Event", value: todayEvents[0] ? formatTime(todayEvents[0].start_time) : "None", icon: <Clock className="w-5 h-5" />, href: "/calendars" },
+            { label: "Today's Events", value: todayEvents.length, icon: <Calendar className="w-5 h-5" />, href: "/calendars", testid: "todayCard" },
+            { label: "Teams", value: teams.length, icon: <Users className="w-5 h-5" />, href: "/teams", testid: "teamCard" },
+            { label: "Pending Requests", value: requests.length, icon: <FileText className="w-5 h-5" />, href: "/requests", testid: "requestCard" },
+            { label: "Next Event", value: todayEvents[0] ? formatTime(todayEvents[0].start_time) : "None", icon: <Clock className="w-5 h-5" />, href: "/calendars", testid: "nextCard" },
           ].map((stat) => (
             <div
               key={stat.label}
+              data-testid={stat.testid}
               onClick={() => router.push(stat.href)}
               className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm hover:border-red-900 hover:shadow-md transition-all cursor-pointer"
             >

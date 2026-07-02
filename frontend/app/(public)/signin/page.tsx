@@ -114,6 +114,7 @@ export default function Signin() {
                               variant="ghost"
                               size="sm"
                               onClick={handleResend}
+                              aria-label="Resend verification"
                               disabled={isResending}
                               className="h-7 px-2 hover:bg-destructive/20"
                             >
