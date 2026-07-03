@@ -10,6 +10,7 @@ import { Label } from "@/components/Label";
 import { Button } from "@/components/Button";
 import { Alert, AlertDescription } from "@/components/Alert";
 import { Mail, Lock, AlertCircle, ArrowRight, RefreshCw } from "lucide-react";
+import type { ApiError } from "@/app/types/types";
 import {
   Tooltip,
   TooltipContent,
@@ -38,16 +39,15 @@ export default function Signin() {
       const pass = passRef.current?.value || "";
       await signin(email, pass);
       router.push("/home");
-    } catch (err: any) {
-      console.log(err);
-
-      if (err.message) {
-        if (err.message === "Please verify your account.") {
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr?.message) {
+        if (apiErr.message === "Please verify your account.") {
           setVerified(false);
         }
-        setErrorMessage(err.message);
-      } else if (err?.errors) {
-        setErrorMessage(err.errors[0]?.msg);
+        setErrorMessage(apiErr.message);
+      } else if (apiErr?.errors) {
+        setErrorMessage(apiErr.errors[0]?.msg || "An unexpected error occurred");
       } else {
         setErrorMessage("An unexpected error occurred");
       }
@@ -63,12 +63,12 @@ export default function Signin() {
       setVerified(true);
       await resendVerificationEmail(email);
       setErrorMessage("Verification email resent successfully.");
-    } catch (err: any) {
-      console.log(err);
-      if (err.message) {
-        setErrorMessage(err.message);
-      } else if (err?.errors) {
-        setErrorMessage(err.errors[0]?.msg);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr?.message) {
+        setErrorMessage(apiErr.message);
+      } else if (apiErr?.errors) {
+        setErrorMessage(apiErr.errors[0]?.msg || "An unexpected error occurred");
       } else {
         setErrorMessage("An unexpected error occurred");
       }
@@ -187,7 +187,7 @@ export default function Signin() {
 
               <div className="text-center pt-2">
                 <p className="text-sm text-zinc-600">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link
                     href="/signup"
                     className="text-red-900 hover:text-red-800 font-medium hover:underline transition-colors"

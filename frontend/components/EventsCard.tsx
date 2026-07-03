@@ -2,31 +2,15 @@
 
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
-import { Button, Typography, IconButton } from "@mui/material";
+import { Button, IconButton } from "@mui/material";
 import ClearIcon from '@mui/icons-material/Clear';
 import { getEvents, createEvent, editEvent, deleteEvent } from "../api/api";
 import { styled } from "@mui/material/styles";
 import dayjs from "dayjs";
 import AddEventDialog, { NewEvent } from "./AddEvent";
+import Image from "next/image";
+import type { ScheduledEvent } from "@/app/types/types";
 
-// --- TYPES ---
-// This aligns with what your MySQL database schema might look like
-type ScheduledEvent = {
-  event_id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  weight: number;
-  cycle: string;
-  span: string;
-  isOptimal: string;
-  isShared: boolean;
-  owner: {
-    email: string;
-    name: string;
-    avatar_url: string | null;
-  } | null;
-};
 
 const AddButton = styled(Button)(({ theme }) => ({
   ...theme.typography.button,
@@ -93,11 +77,15 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
 
   useEffect(() => {
     if (!selectedDate) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurrentPage(1);
+  }, [selectedDate, schedule]);
 
+  useEffect(() => {
+    if (!selectedDate) return;
     const loadEvents = async () => {
       setIsLoading(true);
       try {
-        console.log("LOADING!");
         const data = await getEvents(schedule, dayjs(selectedDate), currentPage, 5);
         setEvents(data.events);
         setTotalPages(data.totalPages);
@@ -109,13 +97,8 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
         setIsLoading(false);
       }
     };
-
     loadEvents();
-  }, [selectedDate, currentPage, update]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedDate]);
+  }, [selectedDate, currentPage, update, schedule]);
 
   const goToNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
@@ -190,6 +173,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
 
           {/* Edit Event Dialog */}
           <AddEventDialog
+            key={editingEvent?.event_id ?? "new"}
             open={!!editingEvent}
             onClose={() => setEditingEvent(null)}
             onSubmit={handleEditEvent}
@@ -229,7 +213,7 @@ export default function EventsCard({ selectedDate, schedule }: { selectedDate: D
                     {event.isShared && event.owner && (
                       <div className="flex items-center gap-1">
                         {event.owner.avatar_url ? (
-                          <img
+                          <Image
                             src={event.owner.avatar_url}
                             className="w-4 h-4 rounded-full object-cover"
                             alt={event.owner.name}

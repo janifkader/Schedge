@@ -69,7 +69,6 @@ export default function Home() {
 
         if (cal?.schedule?.sched_id) {
           const today = dayjs();
-          const offset = new Date().getTimezoneOffset();
           const eventsRes = await getEvents(
             cal.schedule.sched_id,
             today,
@@ -145,7 +144,7 @@ export default function Home() {
           {/* Today's Schedule */}
           <div className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
-              <h2 className="font-bold text-zinc-800">Today's Schedule</h2>
+              <h2 className="font-bold text-zinc-800">Today&apos;s Schedule</h2>
               <button
                 onClick={() => router.push("/calendars")}
                 className="text-xs text-red-900 cursor-pointer hover:underline"

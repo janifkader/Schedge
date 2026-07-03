@@ -8,7 +8,6 @@ import {
   DialogActions,
   Button,
   styled,
-  IconButton,
   Tooltip,
 } from "@mui/material";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/Avatar";
@@ -60,8 +59,6 @@ export default function Teams() {
   const [dialogSearch, setDialogSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
   const [dialogPage, setDialogPage] = useState(1);
-  const [totalUserPages, setTotalUserPages] = useState(1);
-  const [totalDialogPages, setTotalDialogPages] = useState(1);
   const [searchFocused, setSearchFocused] = useState(false);
   const [dialogSearchFocused, setDialogSearchFocused] = useState(false);
   const [open, setOpen] = useState(false);
@@ -75,7 +72,6 @@ export default function Teams() {
         const res = await getUsers(dialogPage, 10, dialogSearch);
         if (res?.users) {
           setDialogUsers(res.users);
-          setTotalDialogPages(res.totalPages || 1);
         }
       } catch (err) {
         console.error("Could not load user list", err);
@@ -91,7 +87,6 @@ export default function Teams() {
         const res = await getUsers(userPage, 10, userSearch);
         if (res?.users) {
           setUsers(res.users);
-          setTotalUserPages(res.totalPages || 1);
         }
       } catch (err) {
         console.error("Could not load user list", err);
@@ -108,8 +103,8 @@ export default function Teams() {
         if (res?.teams) setTeams(res.teams);
         const dat = await getUser();
         if (dat?.email) setUserEmail(dat.email); 
-      } catch (err: any) {
-        setError(err.message || "An error occurred fetching teams.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred fetching teams.");
       } finally {
         setLoading(false);
       }
@@ -145,8 +140,8 @@ export default function Teams() {
       );
       setNewMembers([]);
       setOpen(false);
-    } catch (err: any) {
-      setError(err.message || "Could not add members.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not add members.");
     } finally {
       setAdding(false);
     }
@@ -173,20 +168,19 @@ export default function Teams() {
       setTeams((prev) => [res.team, ...prev]);
       setMembers([]);
       setName("");
-    } catch (err: any) {
-      setError(err.message || "Could not create team.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not create team.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filteredUsers = users.filter(
-    (u) => !newMembers.find((m) => m.email === u.email)
-  );
-
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20">
-      {/* Add Member Dialog - Enhanced Styling */}
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-900 text-sm">{error}</div>
+      )}
+      {/* Add Member Dialog */}
       <Dialog 
         open={open} 
         onClose={() => { setOpen(false); setNewMembers([]); setDialogSearch(""); setDialogPage(1); }} 

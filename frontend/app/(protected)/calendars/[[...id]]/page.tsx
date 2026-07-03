@@ -72,7 +72,7 @@ export default function Calendars({ params }: { params: Params }) {
         setIsLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, schedule]);
 
   // Loading State
   if (isLoading) {
@@ -155,7 +155,7 @@ export default function Calendars({ params }: { params: Params }) {
               <CalendarDays className="h-7 w-7 text-red-900" />
             )}
             <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">
-              {name}'s Schedule
+              {name}&apos;s Schedule
             </h1>
             {id && (
               <Badge variant="secondary" className="ml-auto">

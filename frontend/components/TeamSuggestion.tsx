@@ -11,12 +11,6 @@ import {
 } from "@mui/material";
 import { getTeamSuggestions } from "@/api/api";
 
-const ConfirmButton = styled(Button)({
-  backgroundColor: "#82181a",
-  color: "#FFFFFF",
-  "&:hover": { backgroundColor: "#631214" },
-});
-
 const CancelButton = styled(Button)({
   color: "#82181a",
   borderColor: "#82181a",

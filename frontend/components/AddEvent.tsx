@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import NumberField from './NumberField';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
   styled,
 } from "@mui/material";
 import { getScheduleSuggestions, deleteEvent } from '@/api/api';
+import type { ApiError, Resolution } from "@/app/types/types";
 
 type AddEventDialogProps = {
   open: boolean;
@@ -41,15 +42,6 @@ export type NewEvent = {
   applyToAll?: boolean;
   forceCreate?: boolean;
 };
-
-type Resolution = {
-  event_id: string;
-  title: string;
-  weight: number;
-  preScore: number;
-  postScore: number;
-  change: number;
-}
 
 const ConfirmButton = styled(Button)({
   backgroundColor: "#82181a",
@@ -127,32 +119,6 @@ export default function AddEventDialog({
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      setForm(
-        existingEvent
-          ? {
-              title: existingEvent.title,
-              start_time: toLocalISO(new Date(existingEvent.start_time)),
-              end_time: toLocalISO(new Date(existingEvent.end_time)),
-              weight: existingEvent.weight,
-              cycle: existingEvent.cycle,
-              span: existingEvent.span,
-            }
-          : {
-              title: "",
-              start_time: toLocalISO(selectedDate),
-              end_time: toLocalISO(selectedDate),
-              weight: 1,
-              cycle: "None",
-              span: "None",
-            }
-      );
-      setError("");
-      setApplyToAll(false);
-    }
-  }, [open]);
-
   const handleChange = (field: keyof NewEvent) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setForm((prev) => {
@@ -198,23 +164,23 @@ export default function AddEventDialog({
       });
       onClose();
     } 
-    catch (err: any) {
-      if (err.conflicts) {
-        setError(`Conflicts with: ${err.conflicts.map((c: any) => `${c.title} (weight ${c.weight})`).join(", ")}`);
-        if (err.warning) {
+    catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr?.conflicts) {
+        setError(`Conflicts with: ${apiErr.conflicts.map((c) => `${c.title} (weight ${c.weight})`).join(", ")}`);
+        if (apiErr.warning) {
           setWarning(true);
         }
-        if (err.resolutions) {
-          setResolutions(err.resolutions);
+        if (apiErr.resolutions) {
+          setResolutions(apiErr.resolutions);
         }
       }
-      else if (err.message) {
-        setError(err.message);
+      else if (apiErr.message) {
+        setError(apiErr.message);
       } 
       else {
         setError("Failed to create event. Please try again.");
       }
-      console.log(err);
     } 
     finally {
       setLoading(false);
@@ -272,7 +238,7 @@ export default function AddEventDialog({
 
               {suggestions.length === 0 && !loadingSuggestions && (
                 <p className="text-xs text-zinc-400">
-                  Click "Find Slots" to see available times for this day.
+                  Click &quot;Find Slots&quot; to see available times for this day.
                 </p>
               )}
 

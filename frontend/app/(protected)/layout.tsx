@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/Dropdown";
 import { getUser, signout } from "@/api/api";
+import Image from "next/image";
 
 interface NavLinkProps {
   href: string;
@@ -33,6 +34,21 @@ function NavLink({ href, children, icon, onClick }: NavLinkProps) {
     </a>
   );
 }
+
+const getInitials = (name: string) =>
+  name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+
+const UserAvatar = ({ size = "h-8 w-8", avatarUrl, username }: { size?: string; avatarUrl: string | null; username: string }) => (
+    <Avatar className={size}>
+      {avatarUrl ? (
+        <AvatarImage src={avatarUrl} alt={username ?? ""} />
+      ) : (
+        <AvatarFallback className="bg-red-950 text-white text-xs">
+          {getInitials(username ?? "")}
+        </AvatarFallback>
+      )}
+    </Avatar>
+  );
 
 export default function EnhancedNavbar({ children }: { children: React.ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
@@ -72,21 +88,6 @@ export default function EnhancedNavbar({ children }: { children: React.ReactNode
     { href: "/requests", label: "Requests", icon: <FileText className="w-4 h-4" /> },
   ];
 
-  const getInitials = (name: string) =>
-    name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-
-  const UserAvatar = ({ size = "h-8 w-8" }: { size?: string }) => (
-    <Avatar className={size}>
-      {avatarUrl ? (
-        <AvatarImage src={avatarUrl} alt={username ?? ""} />
-      ) : (
-        <AvatarFallback className="bg-red-950 text-white text-xs">
-          {getInitials(username ?? "")}
-        </AvatarFallback>
-      )}
-    </Avatar>
-  );
-
   return (
     <main className="min-h-screen bg-zinc-50">
       <header className="sticky top-0 z-50 w-full border-b border-red-950/10 bg-gradient-to-r from-red-900 via-red-800 to-red-900 shadow-lg">
@@ -95,7 +96,7 @@ export default function EnhancedNavbar({ children }: { children: React.ReactNode
 
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <img src="/log.png" alt="logo" className="h-8 w-auto object-contain" />
+              <Image src="/log.png" alt="logo" width={400} height={100} className="h-8 w-auto object-contain" />
             </div>
 
             {/* Desktop Navigation */}
@@ -116,14 +117,14 @@ export default function EnhancedNavbar({ children }: { children: React.ReactNode
                       variant="ghost"
                       className="flex items-center hover:cursor-pointer gap-2 hover:bg-white/10 text-white border-white/20"
                     >
-                      <UserAvatar />
+                      <UserAvatar avatarUrl={avatarUrl} username={username ?? ""} />
                       <span className="hidden lg:inline-block">{username}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div className="flex items-center gap-3">
-                        <UserAvatar size="h-10 w-10" />
+                        <UserAvatar size="h-10 w-10" avatarUrl={avatarUrl} username={username ?? ""} />
                         <div className="flex flex-col">
                           <p className="text-sm font-medium">{username}</p>
                           <p className="text-xs text-muted-foreground">Manage your account</p>
@@ -166,7 +167,7 @@ export default function EnhancedNavbar({ children }: { children: React.ReactNode
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-white/10 py-4 space-y-2 animate-in slide-in-from-top">
               <div className="flex items-center gap-3 px-3 py-3 mb-3 bg-white/5 rounded-lg">
-                <UserAvatar size="h-10 w-10" />
+                <UserAvatar size="h-10 w-10" avatarUrl={avatarUrl} username={username ?? ""} />
                 <div className="flex flex-col">
                   <span className="text-white font-medium">{username}</span>
                   <span className="text-white/60 text-sm">View profile</span>

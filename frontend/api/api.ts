@@ -1,68 +1,91 @@
 import { Dayjs } from "dayjs";
 import { NewEvent } from "../components/AddEvent";
+import { 
+  UserResponse, 
+  UsersResponse, 
+  TeamResponse, 
+  ScheduleResponse, 
+  TeamsResponse, 
+  EventsResponse, 
+  SuggestionsResponse, 
+  RequestsResponse,
+  TeamSuggestionsResponse,
+  UserProfileResponse,
+  Resolution,
+  ApiError
+} from "@/app/types/types";
 
 interface User {
   email: string;
   name: string;
 }
 
-async function send(
+interface ConflictResponse {
+  error: string;
+  conflicts: { title: string; weight: number }[];
+  resolutions?: Resolution[];
+  warning?: boolean;
+}
+
+async function send<T = unknown>(
   method: string,
   url: string,
   data?: unknown,
   isRetry = false,
-) {
+): Promise<T> {
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND || "http://localhost:4000";
-  
   const fullUrl = url.startsWith("http") ? url : `${baseUrl}${url}`;
-  console.log("FETCH", fullUrl, "credentials: include");
   const res = await fetch(fullUrl, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: data ? JSON.stringify(data) : null,
     credentials: "include",
     cache: "no-store",
   });
-  let json: any = null;
 
+  let json: T | ConflictResponse | null = null;
   try {
     json = await res.json();
   } catch {}
 
-  // Keep your local conflict handling logic
   if (res.status === 409) {
-    throw { conflicts: json.conflicts, message: json.error, warning: json.warning, resolutions: json.resolutions };
+    const conflictJson = json as ConflictResponse;
+    throw {
+      conflicts: conflictJson?.conflicts,
+      message: conflictJson?.error,
+      warning: conflictJson?.warning,
+      resolutions: conflictJson?.resolutions,
+    } as ApiError;
   }
 
   if (res.status === 401 && !isRetry) {
     try {
-      const refreshRes = await fetch(
-        `${baseUrl}/api/refresh`,
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-
+      const refreshRes = await fetch(`${baseUrl}/api/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
       if (refreshRes.ok) {
         return send(method, url, data, true);
+      } else {
+        window.location.href = "/signin";
+        return {} as T;
       }
     } catch (e) {
       console.error("Refresh failed", e);
+      window.location.href = "/signin";
+      return {} as T;
     }
-    // window.location.href = "/";
   }
 
   if (!res.ok) {
-    if (json?.error) {
-      console.log(json.error);
-      throw new Error(json.error);
+    const errorJson = json as { error?: string };
+    if (errorJson?.error) {
+      throw new Error(errorJson.error);
     }
     throw new Error("Request failed");
   }
-  return json;
+
+  return json as T;
 }
 
 export function signup(
@@ -99,7 +122,7 @@ export function signout() {
 }
 
 export function getUserProfile(email: string) {
-  return send("GET", `/api/users/${email}/`);
+  return send<UserProfileResponse>("GET", `/api/users/${email}/`);
 }
 
 export const uploadAvatar = async (file: File) => {
@@ -121,9 +144,9 @@ export function createCalendar() {
 
 export function getCalendar(team_id?: string) {
   if (team_id) {
-    return send("GET", `/api/schedule/${team_id}/`);
+    return send<ScheduleResponse>("GET", `/api/schedule/${team_id}/`);
   }
-  return send("GET", `/api/schedule/`);
+  return send<ScheduleResponse>("GET", `/api/schedule/`);
 }
 
 // Fixed function argument signature mismatch to cleanly accept sched_id
@@ -170,12 +193,12 @@ export function getEvents(
   const queryString = params.toString();
   const url = queryString ? `/api/event/${schedule}/?${queryString}` : `/api/event`;
 
-  return send("GET", url);
+  return send<EventsResponse>("GET", url);
 }
 
 export function getScheduleSuggestions (scheduleId: string, date: string, durationMinutes: number, weight: number) {
   const offset = new Date().getTimezoneOffset();
-  return send("GET", `/api/event/${scheduleId}/suggestions/?date=${date}&duration=${durationMinutes}&weight=${weight}&timezone=${offset}`);
+  return send<SuggestionsResponse>("GET", `/api/event/${scheduleId}/suggestions/?date=${date}&duration=${durationMinutes}&weight=${weight}&timezone=${offset}`);
 };
 
 export function patchRequest(id: string, status: string, last_updated: Dayjs) {
@@ -191,7 +214,7 @@ export function verifyEmail(token: string) {
 }
 
 export function createTeam(team_name: string, members: User[]) {
-  return send("POST", `/api/team/`, { team_name, members });
+  return send<TeamResponse>("POST", `/api/team/`, { team_name, members });
 }
 
 export function addMember(id: string, email: string) {
@@ -199,7 +222,7 @@ export function addMember(id: string, email: string) {
 } 
 
 export function getTeams() {
-  return send("GET", `/api/team/`);
+  return send<TeamsResponse>("GET", `/api/team/`);
 }
 
 export function getRequests(page: number = 1, limit: number = 1000) {
@@ -209,7 +232,7 @@ export function getRequests(page: number = 1, limit: number = 1000) {
   params.append('limit', limit.toString());
   const queryString = params.toString();
   const url = queryString ? `/api/request/?${queryString}` : `/api/request`;
-  return send("GET", url);
+  return send<RequestsResponse>("GET", url);
 }
 
 export function getTeamSuggestions(team_id: string, date: string, duration: number) {
@@ -218,19 +241,19 @@ export function getTeamSuggestions(team_id: string, date: string, duration: numb
   params.append('duration', duration.toString());
   const queryString = params.toString();
   const url = queryString ? `/api/team/${team_id}/suggestions/?${queryString}` : `/api/team/suggestions/${team_id}/`;
-  return send("GET", url);
+  return send<TeamSuggestionsResponse>("GET", url);
 }
 
 export function getTeam(team_id: string) {
-  return send("GET", `/api/team/${team_id}/`);
+  return send<TeamResponse>("GET", `/api/team/${team_id}/`);
 }
 
 export function getUser() {
-  return send("GET", "/api/user");
+  return send<UserResponse>("GET", "/api/user");
 }
 
 export function getSchedule() {
-  return send("GET", "/api/schedule/");
+  return send<ScheduleResponse>("GET", "/api/schedule/");
 }
 
 export function getUsers(page: number = 1, limit: number = 1000, search?: string) {
@@ -242,7 +265,7 @@ export function getUsers(page: number = 1, limit: number = 1000, search?: string
   params.append('limit', limit.toString());
   const queryString = params.toString();
   const url = queryString ? `/api/users/?${queryString}` : `/api/users/`;
-  return send("GET", url);
+  return send<UsersResponse>("GET", url);
 }
 
 export async function exportEvents (scheduleId: string, date?: string) {

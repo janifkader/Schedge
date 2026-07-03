@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import Teams from "../(protected)/teams/page";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getUsers, getUser, createTeam, getTeams, addMember } from "@/api/api";
+import type { TeamsResponse, UsersResponse, UserResponse } from "@/app/types/types";
 
 const pushMock = vi.fn();
 
@@ -22,7 +23,8 @@ vi.mock("@/api/api", () => ({
 }));
 
 const mockLeaderEmail = "leader@schedge.com";
-const mockTeams = [
+const mockUser = { username: "Leader", email: mockLeaderEmail, phone: "", avatar_url: null } as UserResponse;
+const mockTeams = { teams: [
   {
     team_id: "team-1",
     team_name: "Team 1",
@@ -32,7 +34,7 @@ const mockTeams = [
       { email: "member1@schedge.com", name: "Member One", avatar_url: "" },
     ],
   },
-];
+]} as TeamsResponse;
 
 const mockSearchUsers = {
   users: [
@@ -41,14 +43,14 @@ const mockSearchUsers = {
     { email: "search3@schedge.com", name: "Person Three", avatar_url: "" },
   ],
   totalPages: 1,
-};
+} as UsersResponse;
 
 beforeEach(() => {
   vi.resetAllMocks();
   pushMock.mockReset();
     
-  vi.mocked(getTeams).mockResolvedValue({ teams: mockTeams });
-  vi.mocked(getUser).mockResolvedValue({ email: mockLeaderEmail });
+  vi.mocked(getTeams).mockResolvedValue(mockTeams);
+  vi.mocked(getUser).mockResolvedValue(mockUser);
 });
 
 describe("Teams Component", () => {
@@ -117,7 +119,7 @@ describe("Teams Component", () => {
 
   it("opens modal overlay and appends multiple members on sub-actions sequentially", async () => {
     vi.mocked(getUsers).mockResolvedValue(mockSearchUsers);
-    vi.mocked(addMember).mockResolvedValue({} as any);
+    vi.mocked(addMember).mockResolvedValue({} as never);
 
     render(<Teams />);
     const user = userEvent.setup();

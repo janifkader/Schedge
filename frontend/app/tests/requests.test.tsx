@@ -1,9 +1,10 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import userEvent from "@testing-library/user-event";
 import Requests from "../(protected)/requests/page";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getUsers, createRequest, getRequests, getEvents, getSchedule, patchRequest } from '@/api/api';
+import type { ScheduleResponse, RequestsResponse, EventsResponse, UsersResponse } from "@/app/types/types";
 
 const pushMock = vi.fn();
 
@@ -22,9 +23,9 @@ vi.mock("@/api/api", () => ({
   patchRequest: vi.fn(),
 }));
 
-const mockSchedule = { sched_id: "sched-1" };
+const mockSchedule = { schedule: { sched_id: "sched-1" } } as ScheduleResponse;
 
-const mockRequests = [
+const mockRequests = { requests: [
   {
     request_id: "req-1",
     sender_email: "sender@schedge.com",
@@ -41,7 +42,7 @@ const mockRequests = [
       span: "none"
     }
   }
-];
+]} as RequestsResponse;
 
 const mockSearchEvents = {
   events: [
@@ -56,21 +57,23 @@ const mockSearchEvents = {
     }
   ],
   totalPages: 1,
-};
+} as EventsResponse;
 
 const mockSearchUsers = {
   users: [
-    { email: "search1@schedge.com", name: "Alice Smith", pictureUrl: "" },
+    { email: "search1@schedge.com", name: "Alice Smith", avatar_url: "" },
   ],
   totalPages: 1,
-};
+  totalCount: 1,
+  currentPage: 1,
+} as UsersResponse;
 
 beforeEach(() => {
   vi.resetAllMocks();
   pushMock.mockReset();
   
   vi.mocked(getSchedule).mockResolvedValue(mockSchedule);
-  vi.mocked(getRequests).mockResolvedValue({ requests: mockRequests });
+  vi.mocked(getRequests).mockResolvedValue(mockRequests);
   vi.mocked(getEvents).mockResolvedValue(mockSearchEvents);
   vi.mocked(getUsers).mockResolvedValue(mockSearchUsers);
 });
@@ -116,7 +119,7 @@ describe("Requests Component", () => {
   });
 
   it("submits the create request form successfully", async () => {
-    vi.mocked(createRequest).mockResolvedValue({} as any);
+    vi.mocked(createRequest).mockResolvedValue({} as unknown);
 
     render(<Requests />);
     const user = userEvent.setup();
@@ -141,14 +144,13 @@ describe("Requests Component", () => {
 
   it("prevents form submission if dependencies are missing", async () => {
     render(<Requests />);
-    const user = userEvent.setup();
 
     const submitBtn = screen.getByRole("button", { name: /send request/i });
     expect(submitBtn).toBeDisabled();
   });
 
   it("calls patchRequest when accepting or rejecting an existing request card", async () => {
-    vi.mocked(patchRequest).mockResolvedValue({} as any);
+    vi.mocked(patchRequest).mockResolvedValue({} as never);
 
     render(<Requests />);
     const user = userEvent.setup();

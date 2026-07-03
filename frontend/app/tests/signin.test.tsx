@@ -32,7 +32,7 @@ describe("Signin Component", () => {
   });
 
   it("submits the signin form successfully", async () => {
-    vi.mocked(signin).mockResolvedValue({} as any);
+    vi.mocked(signin).mockResolvedValue({} as never);
 
     render(<Signin />);
     const user = userEvent.setup();
@@ -76,7 +76,7 @@ describe("Signin Component", () => {
 
 it("displays verification callout and triggers resend flow cleanly", async () => {
     vi.mocked(signin).mockRejectedValue(new Error("Please verify your account."));
-    vi.mocked(resendVerificationEmail).mockResolvedValue({} as any);
+    vi.mocked(resendVerificationEmail).mockResolvedValue({} as never);
 
     const { container } = render(<Signin />);
     const user = userEvent.setup();

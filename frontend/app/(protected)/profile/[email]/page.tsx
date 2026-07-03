@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { use } from "react";
 import { getUserProfile } from "@/api/api";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface Team {
   team_id: string;
@@ -29,8 +30,8 @@ export default function ProfilePage({ params }: { params: Promise<{ email: strin
       try {
         const data = await getUserProfile(decodeURIComponent(email));
         setProfile(data);
-      } catch (err: any) {
-        setError(err.message || "User not found.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "User not found.");
       } finally {
         setLoading(false);
       }
@@ -72,7 +73,7 @@ export default function ProfilePage({ params }: { params: Promise<{ email: strin
           {/* Avatar */}
           <div className="w-24 h-24 rounded-full overflow-hidden bg-zinc-200 flex items-center justify-center">
             {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
+              <Image src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
             ) : (
               <span className="text-zinc-500 text-3xl font-bold">
                 {getInitials(profile.name)}

@@ -1,9 +1,9 @@
-import { render, screen, waitFor, fireEvent  } from "@testing-library/react";
+import { render, screen, fireEvent  } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import userEvent from "@testing-library/user-event";
 import Home from "../(protected)/home/page";
 import { describe, it, expect, vi, beforeEach} from "vitest";
 import { getUser, getCalendar, getEvents, getTeams, getRequests } from "@/api/api";
+import type { TeamsResponse, RequestsResponse, EventsResponse } from "@/app/types/types";
 
 const pushMock = vi.fn();
 
@@ -43,7 +43,7 @@ const mockTeams = { teams: [
       { email: "member1@schedge.com", name: "Member One", avatar_url: "" },
     ],
   },
-]};
+]} as TeamsResponse;
 
 const mockRequests = {
   requests: [
@@ -60,7 +60,7 @@ const mockRequests = {
       event: { title: "Old Request", start_time: "2026-07-01T08:00:00Z", end_time: "2026-07-01T16:00:00Z" }
     }
   ],
-};
+} as RequestsResponse;
 
 const mockEvents = {
   events: [
@@ -73,7 +73,7 @@ const mockEvents = {
       cycle: "none"
     }
   ],
-};
+} as EventsResponse;
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -107,9 +107,9 @@ describe("Home Component", () => {
   });
 
   it("handles empty data", async () => {
-    vi.mocked(getTeams).mockResolvedValue({ teams: [] });
-    vi.mocked(getRequests).mockResolvedValue({ requests: [] });
-    vi.mocked(getEvents).mockResolvedValue({ events: [] });
+    vi.mocked(getTeams).mockResolvedValue({ teams: [], total: 0, totalPages: 0 });
+    vi.mocked(getRequests).mockResolvedValue({ requests: [], total: 0, totalPages: 0 });
+    vi.mocked(getEvents).mockResolvedValue({ events: [], optimalScore: 0, total: 0, totalPages: 0, totalScore: 0 });
 
     render(<Home />);
     expect(await screen.findByText(/(Good Morning|Good Afternoon|Good Evening), New Name/i)).toBeInTheDocument();

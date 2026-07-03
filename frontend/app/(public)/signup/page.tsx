@@ -9,6 +9,7 @@ import { Input } from "@/components/Input";
 import { Label } from "@/components/Label";
 import { Button } from "@/components/Button";
 import { Alert, AlertDescription } from "@/components/Alert";
+import type { ApiError } from "@/app/types/types";
 import { Mail, Lock, User, Phone, AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function Register() {
@@ -37,13 +38,12 @@ export default function Register() {
       if (pass !== confirm) throw new Error("Passwords don't match.");
       await signup(name, email, pass, phone);
       router.push("/home");
-    } catch (err: any) {
-      console.log(err);
-
-      if (err.message) {
-        setErrorMessage(err.message);
-      } else if (err?.errors) {
-        setErrorMessage(err.errors[0]?.msg);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr?.message) {
+        setErrorMessage(apiErr.message);
+      } else if (apiErr?.errors) {
+        setErrorMessage(apiErr.errors[0]?.msg || "An unexpected error occurred");
       } else {
         setErrorMessage("An unexpected error occurred");
       }

@@ -1,18 +1,25 @@
-import React, { Suspense } from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import userEvent from "@testing-library/user-event";
 import Calendars from "../(protected)/calendars/[[...id]]/page";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getUser, getCalendar, getTeam, exportEvents } from "@/api/api";
+import type { TeamResponse } from "@/app/types/types";
+
+interface MockParams {
+  _isMockParams: boolean;
+  data: { id?: string[] };
+}
 
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
     ...actual,
-    use: (p: any) => {
-      if (p && p._isMockParams) return p.data;
-      return actual.use ? actual.use(p) : p;
+    use: (p: unknown) => {
+      const mp = p as MockParams;
+      if (mp && mp._isMockParams) return mp.data;
+      return actual.use(p as Parameters<typeof actual.use>[0]);
     },
   };
 });
@@ -42,13 +49,15 @@ vi.mock("@/components/TeamSuggestion", () => ({
     ) : null
 }));
 
-const mockPersonalUser = { username: "Personal User" };
-const mockTeam = { 
-  team: { 
-    team_name: "Mock Team", 
-    members: [{ email: "one@example.com" }, { email: "two@example.com" }] 
-  } 
-};
+const mockPersonalUser = { username: "Personal User" } as never;
+const mockTeam = {
+  team: {
+    team_id: "team-1",
+    team_name: "Test Team",
+    leader_email: "leader@test.com",
+    members: [{ email: "member@test.com", name: "Member", avatar_url: "" }],
+  },
+} as TeamResponse;
 const mockCalendarData = { schedule: { sched_id: "sched-99" } };
 
 beforeEach(() => {
@@ -57,7 +66,7 @@ beforeEach(() => {
 
 const renderCalendars = (paramsObj: { id?: string[] } = {}) => {
   const fakeParams = { _isMockParams: true, data: paramsObj };
-  return render(<Calendars params={fakeParams as any} />);
+  return render(<Calendars params={fakeParams as never} />);
 };
 
 describe("Calendars Component", () => {
@@ -86,7 +95,7 @@ describe("Calendars Component", () => {
     vi.mocked(getTeam).mockResolvedValue(mockTeam);
 
     renderCalendars({ id: ["team-123"] });
-    expect(await screen.findByText("Mock Team's Schedule")).toBeInTheDocument();
+    expect(await screen.findByText(/Test Team.*Schedule/i)).toBeInTheDocument();
     expect(screen.getByText("Team Calendar")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /find meeting time/i })).toBeInTheDocument();
   });
@@ -113,7 +122,7 @@ describe("Calendars Component", () => {
   it("handles export", async () => {
     vi.mocked(getCalendar).mockResolvedValue(mockCalendarData);
     vi.mocked(getUser).mockResolvedValue(mockPersonalUser);
-    vi.mocked(exportEvents).mockResolvedValue({} as any);
+    vi.mocked(exportEvents).mockResolvedValue({} as never);
 
     renderCalendars({});
     const user = userEvent.setup();
@@ -131,7 +140,7 @@ describe("Calendars Component", () => {
 
     renderCalendars({ id: ["team-123"] });
     const user = userEvent.setup();
-    await screen.findByText("Mock Team's Schedule");
+    await screen.findByText("Test Team's Schedule");
     const findTimeBtn = screen.getByRole("button", { name: /find meeting time/i });
     await user.click(findTimeBtn);
     expect(screen.getByTestId("mock-team-suggestion")).toBeInTheDocument();

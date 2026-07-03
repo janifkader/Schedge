@@ -11,7 +11,7 @@ export default function Home() {
         if (data?.username) {
           window.location.href = `/home`
         }
-      } catch (err: unknown) {
+      } catch {
         window.location.href = `/signin`;
       }
     };

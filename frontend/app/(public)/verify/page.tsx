@@ -23,9 +23,9 @@ function VerifyEmailContent() {
       try {
         await verifyEmail(token);
         setStatus("success");
-      } catch (err: any) {
+      } catch (err: unknown) {
         setStatus("error");
-        setMessage(err.message || "Invalid or expired verification token.");
+        setMessage(err instanceof Error ? err.message : "Invalid or expired verification token.");
       }
     }
     verifyToken();

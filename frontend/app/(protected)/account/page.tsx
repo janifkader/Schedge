@@ -1,21 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TextField, Button, styled, Divider } from "@mui/material";
+import { TextField, Button, styled } from "@mui/material";
 import { getUser, updateUser, uploadAvatar, changePassword } from "@/api/api";
-import Link from "next/link";
 import Image from "next/image";
 
 const SaveButton = styled(Button)({
   backgroundColor: "#82181a",
   color: "#FFFFFF",
   "&:hover": { backgroundColor: "#631214" },
-});
-
-const OutlineButton = styled(Button)({
-  color: "#82181a",
-  borderColor: "#82181a",
-  "&:hover": { borderColor: "#631214", color: "#631214" },
 });
 
 export default function AccountSettings() {
@@ -61,8 +54,8 @@ export default function AccountSettings() {
       const formattedPhone = phone ? `+1${phone}` : "";
       await updateUser(name, formattedPhone);
       setProfileSuccess("Profile updated successfully.");
-    } catch (err: any) {
-      setProfileError(err.message || "Failed to update profile.");
+    } catch (err: unknown) {
+      setProfileError(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setProfileLoading(false);
     }
@@ -87,8 +80,8 @@ export default function AccountSettings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      setPasswordError(err.message || "Failed to change password.");
+    } catch (err: unknown) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password.");
     } finally {
       setPasswordLoading(false);
     }
@@ -103,7 +96,7 @@ export default function AccountSettings() {
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 rounded-full overflow-hidden bg-red-950  flex items-center justify-center">
             {avatar ? (
-              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+              <Image src={avatar} alt="Avatar" width={400} height={100} className="w-full h-full object-cover" />
             ) : (
               <span className="text-white text-2xl font-bold">
                 {getInitials(name ?? "")}

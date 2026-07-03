@@ -13,6 +13,7 @@ const primaryColor = '#000000';
 /**
  * This component is from https://mui.com/material-ui/react-number-field/;
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SSRInitialFilled(_: BaseNumberField.Root.Props) {
   return null;
 }
@@ -73,13 +74,13 @@ export default function NumberField({
                 if (typeof props.ref === 'function') {
                     props.ref(node);
                 } else if (props.ref) {
-                    (props.ref as React.MutableRefObject<any>).current = node;
+                    (props.ref as React.MutableRefObject<HTMLInputElement>).current = node;
                 }
                 
                 if (typeof inputRef === 'function') {
                     inputRef(node);
                 } else if (inputRef) {
-                    (inputRef as React.MutableRefObject<any>).current = node;
+                    (inputRef as React.MutableRefObject<HTMLInputElement>).current = node;
                 }
             }}
             value={state.inputValue}

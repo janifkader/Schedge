@@ -33,7 +33,7 @@ describe("Register Component", () => {
   });
 
   it("submits the register form successfully and handles +1 country code formatting", async () => {
-    vi.mocked(signup).mockResolvedValue({} as any);
+    vi.mocked(signup).mockResolvedValue({} as never);
 
     render(<Register />);
     const user = userEvent.setup();

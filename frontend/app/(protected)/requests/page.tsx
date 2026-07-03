@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { getUsers, createRequest, getRequests, getEvents, getSchedule, patchRequest } from '@/api/api';
-import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/Avatar";
 
 interface User {
@@ -49,14 +48,13 @@ export default function Requests() {
   const [totalEventPages, setTotalEventPages] = useState(1);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchFocusedEvent, setSearchFocusedEvent] = useState(false);
-  const router = useRouter();
 
   const handlePatch = async (request_id: string, status: string) => {
     try {
       await patchRequest(request_id, status, dayjs(new Date()));
       setUpdate((prevUpdate) => prevUpdate + 1);
-    } catch (err: any) {
-      setError(err.message || "Could not update request.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not update request.");
     }
   }
 
@@ -111,8 +109,8 @@ export default function Requests() {
       await createRequest(events[0].event_id, members[0].email, dayjs(new Date()));
       setMembers([]);
       setEvents([]);
-    } catch (err: any) {
-      setError(err.message || "Could not create request.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not create request.");
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +138,7 @@ export default function Requests() {
     async function loadEvents() {
       try {
         const schedule = await getSchedule();
-        const scheduleId = schedule?.sched_id || schedule?.schedule?.sched_id;
+        const scheduleId = schedule?.schedule?.sched_id || schedule?.schedule?.sched_id;
         if (!scheduleId) return;
         const res = await getEvents(scheduleId, null, eventPage, 10, eventSearch);
         if (res?.events) {
@@ -160,8 +158,8 @@ export default function Requests() {
       try {
         const res = await getRequests();
         if (res?.requests) setRequests(res.requests);
-      } catch (err: any) {
-        setError(err.message || "An error occurred fetching requests.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred fetching requests.");
       } finally {
         setLoading(false);
       }
@@ -339,7 +337,7 @@ export default function Requests() {
             ) : requests.length === 0 ? (
               <div className="bg-white border border-slate-200 p-12 rounded-3xl text-center shadow-inner">
                 <h3 className="text-xl font-bold text-slate-800">No requests found</h3>
-                <p className="text-slate-500 mt-2 max-w-sm mx-auto">You don't have any pending requests at the moment.</p>
+                <p className="text-slate-500 mt-2 max-w-sm mx-auto">You don&apos;t have any pending requests at the moment.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

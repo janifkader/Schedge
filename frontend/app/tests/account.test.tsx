@@ -7,6 +7,13 @@ import { getUser, updateUser, uploadAvatar, changePassword } from "@/api/api";
 
 const pushMock = vi.fn();
 
+vi.mock("next/image", () => ({
+  default: ({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) => (
+  	// eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} {...props as React.ImgHTMLAttributes<HTMLImageElement>} />
+  ),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
@@ -53,7 +60,7 @@ describe("Account Settings", () => {
   });
 
   it("submits profile information update", async () => {
-    vi.mocked(updateUser).mockResolvedValue({} as any);
+    vi.mocked(updateUser).mockResolvedValue({} as unknown);
 
     render(<AccountSettings />);
     const user = userEvent.setup();
@@ -86,7 +93,7 @@ describe("Account Settings", () => {
   });
 
   it("submits change password form and clears inputs on success", async () => {
-    vi.mocked(changePassword).mockResolvedValue({} as any);
+    vi.mocked(changePassword).mockResolvedValue({} as unknown);
 
     render(<AccountSettings />);
     const user = userEvent.setup();
@@ -130,7 +137,7 @@ describe("Account Settings", () => {
     const user = userEvent.setup();
 
     const file = new File(["avatar-bytes"], "avatar.png", { type: "image/png" });
-    const hiddenFileInput = container.querySelector("input[type='file']");
+    const hiddenFileInput = container.querySelector("input[type='file']") as HTMLElement;
   	expect(hiddenFileInput).toBeInTheDocument();
 
     await user.upload(hiddenFileInput, file);
